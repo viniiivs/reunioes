@@ -30,7 +30,7 @@
 .passo .ph { font-size: 17px; width: 22px; text-align: center; }
 
 .voltar {
-  margin-top: auto; display: inline-flex; align-items: center; gap: 8px;
+  align-self: flex-start; margin: -6px 0 -4px; display: inline-flex; border: 0; background: transparent; font: 500 13px var(--font); cursor: pointer; align-items: center; gap: 8px;
   padding: 8px 10px; border-radius: var(--r); color: var(--muted); font-size: 13px; text-decoration: none;
 }
 .voltar:hover { background: var(--hover); color: var(--text); }
@@ -134,3 +134,17 @@
   .opcoes { grid-template-columns: 1fr; }
 }
 @media (prefers-reduced-motion: reduce) { .barra.indeterminada i { animation: none; width: 100%; opacity: 0.4; } }
+
+/* linhas de informação (rótulo à esquerda, valor à direita) dentro de um grupo */
+.info { display: flex; justify-content: space-between; align-items: baseline; gap: 24px; font-size: 13.5px; }
+.info > span { color: var(--muted); flex: none; }
+.info > b { font-weight: 500; text-align: right; min-width: 0; overflow-wrap: anywhere; }
+.info .caminho { font-family: var(--mono); font-size: 12.5px; }
+.botoes { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 18px; }
+#instalacao:not(:empty) { margin-top: 18px; }
+.secao h3 + .nota { margin-top: 0; }
+.nota { margin: 0; color: var(--muted); font-size: 13.5px; line-height: 1.55; max-width: 62ch; }
+.junto { white-space: nowrap; }
+.info > span.ruim { color: var(--danger); }
+.info > .btn { flex: none; }
+

@@ -18,7 +18,12 @@ if (wv) {
   });
 }
 
+// Uma tela embutida (Configurações por cima da lista) usa a ponte da janela que a contém:
+// assim abrir e fechar não recarrega nada e os avisos do app chegam às duas.
+const pai = !wv && window.parent !== window ? window.parent.ponteReunioes : null;
+
 export function chamar(cmd, args = {}) {
+  if (pai) return pai.chamar(cmd, args);
   if (!wv) return simular(cmd, args);
   return new Promise((ok, falha) => {
     const id = ++seq;
@@ -27,7 +32,10 @@ export function chamar(cmd, args = {}) {
   });
 }
 
-export function aoMudar(f) { ouvintes.add(f); }
+export function aoMudar(f) { pai ? pai.aoMudar(f) : ouvintes.add(f); }
+
+export const embutida = !!pai || (window.parent !== window);
+if (!pai) window.ponteReunioes = { chamar, aoMudar };
 
 export const noApp = !!wv;
 

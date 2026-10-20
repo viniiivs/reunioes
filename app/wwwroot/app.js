@@ -286,13 +286,13 @@ async function lerEstado() {
   // faixa de aviso: motor pendente tem prioridade sobre atualizacao pronta
   const faixa = $("#faixa");
   if (!est.motorPronto) {
-    faixa.innerHTML = `<i class="ph ph-warning" aria-hidden="true"></i><span>O motor de transcrição precisa ser instalado ou atualizado.</span><a class="btn" href="config.html#s-motor">Abrir Configurações</a>`;
+    faixa.innerHTML = `<i class="ph ph-warning" aria-hidden="true"></i><span>O motor de transcrição precisa ser instalado ou atualizado.</span><button class="btn" data-config="motor">Abrir Configurações</button>`;
     faixa.hidden = false;
   } else if (est.atualizacao?.estado === "pronta") {
     faixa.innerHTML = `<i class="ph ph-arrow-circle-up" aria-hidden="true"></i><span>A versão ${f.esc(est.atualizacao.nova)} está pronta.</span><button class="btn primario" data-acao="atualizar">Reiniciar e atualizar</button>`;
     faixa.hidden = false;
   } else if (est.atalho && est.servico.rodando && est.servico.atalhoOk === false) {
-    faixa.innerHTML = `<i class="ph ph-keyboard" aria-hidden="true"></i><span>O atalho ${f.esc(ATALHO_NOME(est.atalho))} já é usado por outro programa. Escolha outro.</span><a class="btn" href="config.html#s-extras">Trocar atalho</a>`;
+    faixa.innerHTML = `<i class="ph ph-keyboard" aria-hidden="true"></i><span>O atalho ${f.esc(ATALHO_NOME(est.atalho))} já é usado por outro programa. Escolha outro.</span><button class="btn" data-config="extras">Trocar atalho</button>`;
     faixa.hidden = false;
   } else faixa.hidden = true;
   if (carregou && !dados.length && !filtro.value) desenhar();   // o vazio mostra o atalho
@@ -319,12 +319,47 @@ botaoGravar.addEventListener("click", async () => {
 });
 
 $("#faixa").addEventListener("click", async (e) => {
+  const cfgBtn = e.target.closest("[data-config]");
+  if (cfgBtn) return abrirConfiguracoes(cfgBtn.dataset.config);
   if (!e.target.closest("[data-acao=atualizar]")) return;
   try { await chamar("aplicarAtualizacao"); } catch (er) { avisar(er.message); }
 });
 
+// ---------------------------------------------------------------- Configurações por cima da lista
+
+const camada = $("#configuracoes");
+let quadro = null;
+function prepararConfiguracoes() {
+  if (quadro) return quadro;
+  quadro = document.createElement("iframe");
+  quadro.title = "Configurações";
+  quadro.src = "config.html";
+  camada.append(quadro);
+  return quadro;
+}
+async function abrirConfiguracoes(secao) {
+  const q = prepararConfiguracoes();
+  camada.hidden = false;
+  requestAnimationFrame(() => camada.classList.add("aberta"));
+  // na primeira vez espera a tela carregar; nas outras, só relê os dados e troca de seção
+  const pronta = () => q.contentWindow?.abrirSecao;
+  if (!pronta()) await new Promise((ok) => { const t = setInterval(() => { if (pronta()) { clearInterval(t); ok(); } }, 30); });
+  q.contentWindow.abrirSecao(secao);
+  q.contentWindow.focus();
+}
+window.fecharConfiguracoes = () => {
+  camada.classList.remove("aberta");
+  setTimeout(() => { camada.hidden = true; }, 160);
+  lerEstado();
+  $("#filtro").focus();
+};
+$("#engrenagem").addEventListener("click", () => abrirConfiguracoes());
+addEventListener("keydown", (e) => { if (e.key === "," && e.ctrlKey) { e.preventDefault(); abrirConfiguracoes(); } });
+
 lerEstado();
 setInterval(lerEstado, 3000);
+// pré-carrega as Configurações quando a lista já apareceu: abrir fica instantâneo
+setTimeout(() => (window.requestIdleCallback || setTimeout)(prepararConfiguracoes), 1200);
 
 aoMudar((m) => { if (m.evento === "mudou") carregar(); else if (m.evento === "atualizacao") lerEstado(); });
 esqueleto();

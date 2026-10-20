@@ -92,7 +92,26 @@ public sealed class Gravacoes
 
     record Proc(int Pid, string Linha);
 
+    // A consulta ao WMI custa ~240 ms; a lista, o estado do topo e a fila pedem quase juntas.
+    static List<Proc>? cacheProcs;
+    static DateTime cacheProcsEm;
+    static readonly object travaProcs = new();
+
     static List<Proc> Pythons()
+    {
+        lock (travaProcs)
+        {
+            if (cacheProcs != null && (DateTime.UtcNow - cacheProcsEm).TotalMilliseconds < 1500) return cacheProcs;
+            cacheProcs = ConsultarPythons();
+            cacheProcsEm = DateTime.UtcNow;
+            return cacheProcs;
+        }
+    }
+
+    /// <summary>Esquece a consulta guardada (depois de iniciar ou matar um processo).</summary>
+    public static void EsquecerProcessos() { lock (travaProcs) cacheProcs = null; }
+
+    static List<Proc> ConsultarPythons()
     {
         var r = new List<Proc>();
         try
@@ -337,6 +356,7 @@ public sealed class Gravacoes
         {
             foreach (var b in Bases())
                 if (!File.Exists(Caminho(b, "sha256"))) File.WriteAllText(Caminho(b, "parar"), "");
+            EsquecerProcessos();
             return;
         }
         Directory.CreateDirectory(Dir);
@@ -348,6 +368,7 @@ public sealed class Gravacoes
         psi.RedirectStandardOutput = true;
         psi.RedirectStandardError = true;
         var p = Process.Start(psi)!;
+        EsquecerProcessos();
         var log = Caminho(nome, "gravar.log");
         _ = Task.Run(async () =>
         {
@@ -380,6 +401,7 @@ public sealed class Gravacoes
         }
         foreach (var p in Pythons().Where(p => p.Linha.Contains("transcrever.py") && Cita(p.Linha, b)))
             try { Process.GetProcessById(p.Pid).Kill(true); } catch (Exception) { }
+        EsquecerProcessos();
         Mudou?.Invoke();
     }
 
@@ -440,6 +462,7 @@ public sealed class Gravacoes
             psi.RedirectStandardOutput = true;
             psi.RedirectStandardError = true;
             var p = Process.Start(psi)!;
+            EsquecerProcessos();
             var log = new StreamWriter(new FileStream(Caminho(b, "log"), FileMode.Create, FileAccess.Write, FileShare.ReadWrite), Encoding.UTF8) { AutoFlush = true };
             p.OutputDataReceived += (_, e) => { if (e.Data != null) lock (log) log.WriteLine(e.Data); };
             p.ErrorDataReceived += (_, e) => { if (e.Data != null) lock (log) log.WriteLine(e.Data); };
@@ -449,6 +472,7 @@ public sealed class Gravacoes
                 p.WaitForExit();
                 lock (log) log.Dispose();
                 lock (trava) { atual = null; atualBase = null; }
+                EsquecerProcessos();
                 if (p.ExitCode == 0 && cfg().Resumo.Ativo && File.Exists(Caminho(b, "transcricao.md")) && !File.Exists(Caminho(b, "resumo.json")))
                     TentarResumir(b);
                 Proximo();

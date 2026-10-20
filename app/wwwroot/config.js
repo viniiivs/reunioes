@@ -207,22 +207,28 @@ function rPronto() {
 }
 
 function rMotor() {
+  const q = QUALIDADES.find((x) => x.id === cfg.modelo)?.nome || cfg.modelo;
   return `
     <h2>Motor de transcrição</h2>
     <p class="lead">${pendentes.length ? "Algumas configurações mudaram e o motor precisa baixar ou instalar coisas novas." : "Instalado e em dia com a configuração."}</p>
+    <div class="pilha">
+      <div class="info"><span>Qualidade</span><b>${esc(q)}, ${cfg.usarGpu && sis.nvidia ? "na placa de vídeo" : "no processador"}</b></div>
+      <div class="info"><span>Idioma</span><b>${esc(IDIOMAS.find(([v]) => v === cfg.idioma)?.[1] || cfg.idioma)}</b></div>
+      <div class="info"><span>Separar vozes</span><b>${cfg.separarVozes ? "Sim" : "Não"}</b></div>
+      <div class="info"><span>Pasta</span><b class="caminho">${esc(cfg.pastaMotor)}</b></div>
+    </div>
     <div id="instalacao">${pendentes.length ? etapasHtml() : ""}</div>
-    <div class="pilha" style="margin-top:16px; grid-auto-flow: column; justify-content: start;">
+    <div class="botoes">
       ${pendentes.length ? `<button class="btn primario" id="instalarAgora"><i class="ph ph-download-simple"></i> Instalar agora</button>` : ""}
       <button class="btn" id="verLog"><i class="ph ph-file-text"></i> Registro da instalação</button>
     </div>`;
 }
-
 function rAtualizacoes() {
   return `
     <h2>Atualizações</h2>
     <p class="lead">Versão instalada: <b>${esc(sis.versao)}</b></p>
     <div class="pilha">
-      <div id="atualizacao"></div>
+      <div id="atualizacao">${atualizacaoHtml(ultimoStatus)}</div>
       ${interruptor("atualizarSozinho", cfg.atualizarSozinho, "Atualizar sozinho", "Procura ao abrir o app, baixa em segundo plano e avisa quando é só reiniciar.")}
     </div>`;
 }
@@ -230,17 +236,20 @@ function lAtualizacoes() { cfg.atualizarSozinho = ligado("atualizarSozinho"); }
 
 function rSobre() {
   const comp = [["WhisperX", "https://github.com/m-bain/whisperX"], ["faster-whisper", "https://github.com/SYSTRAN/faster-whisper"], ["pyannote.audio", "https://github.com/pyannote/pyannote-audio"],
-    ["PyTorch", "https://pytorch.org"], ["uv", "https://github.com/astral-sh/uv"], ["Velopack", "https://velopack.io"], ["Phosphor Icons", "https://phosphoricons.com"], ["NAudio", "https://github.com/naudio/NAudio"]];
+    ["PyTorch", "https://pytorch.org"], ["uv", "https://github.com/astral-sh/uv"], ["Velopack", "https://velopack.io"], ["Phosphor Icons", "https://phosphoricons.com"], ["NAudio", "https://github.com/naudio/NAudio"], ["Inter", "https://rsms.me/inter/"]];
   return `
     <h2>Sobre</h2>
-    <p class="lead">Reuniões ${esc(sis.versao)}. Feito por <b>Vinícius Vieira</b>, <button class="link-ext" data-link="${GITHUB}">github.com/viniiivs</button>.</p>
+    <p class="lead">Grava, transcreve e resume reuniões no seu próprio computador.</p>
     <div class="pilha">
-      <div class="guia"><b>Privacidade.</b> Gravação e transcrição acontecem no seu computador. Só sai daqui: o download dos modelos e das atualizações, e o texto da transcrição enviado ao Claude quando o resumo está ligado.</div>
-      <p class="credito">Código aberto, licença MIT: <button class="link-ext" data-link="${REPO}">github.com/viniiivs/reunioes</button></p>
-      <p class="credito">Feito com ${comp.map(([n, u]) => `<button class="link-ext" data-link="${u}">${n}</button>`).join(", ")}.</p>
-    </div>`;
+      <div class="info"><span>Versão</span><b>${esc(sis.versao)}</b></div>
+      <div class="info"><span>Feito por</span><b>Vinícius Vieira · <button class="link-ext" data-link="${GITHUB}">github.com/viniiivs</button></b></div>
+      <div class="info"><span>Código aberto</span><b><button class="link-ext" data-link="${REPO}">github.com/viniiivs/reunioes</button> · licença MIT</b></div>
+    </div>
+    <h3>Privacidade</h3>
+    <p class="nota">Gravação e transcrição acontecem no seu computador. Só sai daqui o download dos modelos e das atualizações, e o texto da transcrição enviado ao Claude quando o resumo está ligado.</p>
+    <h3>Feito com</h3>
+    <p class="nota">${comp.map(([n, u], i) => `<span class="junto"><button class="link-ext" data-link="${u}">${n}</button>${i < comp.length - 1 ? "," : "."}</span>`).join(" ")}</p>`;
 }
-
 // ---------------------------------------------------------------- tamanho e espaco
 
 function tamanhoTotal() {
@@ -304,21 +313,27 @@ async function instalar() {
 
 // ---------------------------------------------------------------- atualizacoes
 
-function desenharAtualizacao(s) {
-  const el = $("#atualizacao");
-  if (!el || !s) return;
+let ultimoStatus = null;   // mostra o último status na hora; o novo chega em seguida
+
+function atualizacaoHtml(s) {
+  if (!s) return `<div class="info"><span>Conferindo...</span></div>`;
   const txt = {
-    dev: "Esta cópia não foi instalada pelo instalador; atualizações desligadas.",
-    parado: "", atual: "Você está na versão mais recente.", procurando: "Procurando...",
+    dev: "Cópia de desenvolvimento: atualizações desligadas.",
+    parado: "Ainda não procurou.", atual: "Você está na versão mais recente.", procurando: "Procurando...",
     disponivel: `Versão ${esc(s.nova)} disponível.`, baixando: `Baixando a versão ${esc(s.nova)}... ${s.pct}%`,
     pronta: `Versão ${esc(s.nova)} baixada. Reinicie para usar.`, erro: `Não deu para procurar: ${esc(s.erro || "")}`,
   }[s.estado] || "";
   const btn = s.estado === "pronta"
-    ? `<button class="btn primario" id="aplicarAtualizacao"><i class="ph ph-arrows-clockwise"></i> Reiniciar e atualizar</button>`
-    : `<button class="btn" id="procurarAtualizacao" ${s.estado === "dev" || s.estado === "procurando" || s.estado === "baixando" ? "disabled" : ""}><i class="ph ph-magnifying-glass"></i> Procurar atualizações</button>`;
-  el.innerHTML = `<div class="status-linha${s.estado === "erro" ? " ruim" : s.estado === "atual" ? " ok" : ""}">${txt}</div><div style="margin-top:10px">${btn}</div>`;
+    ? `<button class="btn primario" id="aplicarAtualizacao">Reiniciar e atualizar</button>`
+    : `<button class="btn" id="procurarAtualizacao" ${["dev", "procurando", "baixando"].includes(s.estado) ? "disabled" : ""}>Procurar agora</button>`;
+  return `<div class="info"><span class="${s.estado === "erro" ? "ruim" : ""}">${txt}</span>${btn}</div>`;
 }
 
+function desenharAtualizacao(s) {
+  ultimoStatus = s || ultimoStatus;
+  const el = $("#atualizacao");
+  if (el) el.innerHTML = atualizacaoHtml(ultimoStatus);
+}
 // ---------------------------------------------------------------- desenho e navegacao
 
 function secaoHtml(s) { return `<section class="secao" id="s-${s.id}" data-secao="${s.id}">${s.render()}</section>`; }
@@ -334,19 +349,16 @@ function desenharLateral() {
   $("#passos").innerHTML = lista.map((s, i) => SETUP
     ? `<button class="passo ${i < passo ? "feito" : ""}" ${i === passo ? 'aria-current="step"' : ""} data-ir="${i}" ${i > passo || instalando || instalado && i < lista.findIndex((x) => x.id === "pronto") ? "disabled" : ""}>
          <span class="n">${i < passo ? '<i class="ph ph-check"></i>' : i + 1}</span>${s.titulo}</button>`
-    : `<button class="passo" data-rolar="${s.id}"><i class="ph ph-${s.icone}" aria-hidden="true"></i>${s.titulo}</button>`).join("");
+    : `<button class="passo" data-ir="${i}" data-rolar="${s.id}" ${i === passo ? 'aria-current="true"' : ""}><i class="ph ph-${s.icone}" aria-hidden="true"></i>${s.titulo}</button>`).join("");
 }
 
 function desenhar() {
   const lista = visiveis();
-  if (SETUP) {
-    conteudo.innerHTML = secaoHtml(lista[passo]);
-    conteudo.scrollTop = 0;
-    conteudo.focus();
-  } else {
-    conteudo.innerHTML = lista.map(secaoHtml).join("");
-    chamar("atualizacao").then(desenharAtualizacao).catch(() => {});
-  }
+  // Uma seção por vez, nos dois modos (como os Ajustes do Sistema): o item clicado é o que aparece.
+  conteudo.innerHTML = secaoHtml(lista[passo]);
+  conteudo.scrollTop = 0;
+  if (SETUP) conteudo.focus();
+  else if (lista[passo].id === "atualizacoes") chamar("atualizacao").then(desenharAtualizacao).catch(() => {});
   desenharLateral();
   desenharRodape();
   ["pastaGravacoes", "pastaMotor"].forEach((id) => $("#" + id) && espaco(id));
@@ -483,7 +495,7 @@ rodape.addEventListener("click", async (e) => {
     if (await salvar()) {
       sujo = false; desenharRodape(); desenharSecao("motor");
       avisar(pendentes.length ? "Salvo. O motor precisa instalar coisas novas: veja em Motor." : "Configurações salvas.");
-      if (pendentes.length) document.getElementById("s-motor")?.scrollIntoView();
+      if (pendentes.length) irPara("motor");
     }
   } else if (t.closest("#descartar")) {
     cfg = await chamar("config"); tokenNovo = null; sujo = false; desenhar();
@@ -493,19 +505,38 @@ rodape.addEventListener("click", async (e) => {
 $("#passos").addEventListener("click", (e) => {
   const b = e.target.closest(".passo");
   if (!b || b.disabled || (SETUP && (instalando || instalado))) return;
-  if (SETUP) { visiveis()[passo].ler?.(); passo = +b.dataset.ir; desenhar(); }
-  else document.getElementById("s-" + b.dataset.rolar)?.scrollIntoView();
+  visiveis()[passo].ler?.();   // guarda o que foi digitado antes de trocar de seção
+  passo = +b.dataset.ir;
+  desenhar();
 });
 
-// Menu lateral acompanha a secao visivel (modo configuracoes).
-if (!SETUP) {
-  const obs = new IntersectionObserver((ents) => {
-    for (const en of ents) if (en.isIntersecting) {
-      document.querySelectorAll(".passo").forEach((p) => p.setAttribute("aria-current", String(p.dataset.rolar === en.target.dataset.secao)));
-    }
-  }, { root: conteudo, rootMargin: "0px 0px -70% 0px" });
-  new MutationObserver(() => document.querySelectorAll(".secao").forEach((s) => obs.observe(s))).observe(conteudo, { childList: true });
+function irPara(id) {
+  const i = visiveis().findIndex((s) => s.id === id);
+  if (i < 0 || i === passo) return;
+  visiveis()[passo].ler?.();
+  passo = i;
+  desenhar();
 }
+
+// ---------------------------------------------------------------- embutida na lista (abre por cima, sem recarregar)
+
+$("#voltar").addEventListener("click", () => {
+  if (sujo) { avisar("Salve ou descarte as alterações antes de voltar."); return; }
+  if (window.parent !== window && window.parent.fecharConfiguracoes) window.parent.fecharConfiguracoes();
+  else location.href = "index.html";
+});
+
+// A lista chama ao abrir de novo: relê o que pode ter mudado fora daqui (ex.: "Gravar sozinho" no topo).
+async function abrirSecao(id) {
+  if (!sujo) {
+    [cfg, pendentes] = await Promise.all([chamar("config"), chamar("pendentes")]);
+    const e = await chamar("estado").catch(() => null);
+    atalhoOcupado = !!e?.servico?.rodando && e.servico.atalhoOk === false;
+  }
+  if (id) { const i = visiveis().findIndex((s) => s.id === id); if (i >= 0) passo = i; }
+  desenhar();
+}
+addEventListener("keydown", (e) => { if (e.key === "Escape" && !SETUP && !e.defaultPrevented) $("#voltar").click(); });
 
 addEventListener("beforeunload", (e) => { if (sujo || instalando) e.preventDefault(); });
 
@@ -522,4 +553,6 @@ $("#versao").textContent = "versão " + sis.versao;
 $("#voltar").hidden = SETUP;
 document.title = SETUP ? "Configurar o Reuniões" : "Configurações";
 desenhar();
-if (!SETUP && location.hash) document.querySelector(location.hash)?.scrollIntoView();
+if (!SETUP && location.hash) irPara(location.hash.replace("#s-", "").replace("#", ""));
+// só agora a lista pode abrir esta tela: os dados já chegaram
+window.abrirSecao = abrirSecao;

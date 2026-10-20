@@ -187,6 +187,7 @@ public static class Nucleo
             config = c;
         }
         Gravacoes.Vigiar();
+        Emitir(new { evento = "mudou" });   // pasta pode ter mudado: a lista recarrega
         if (c.ConfiguracaoConcluida)
         {
             Servico.IniciarComWindows(c, c.IniciarComWindows);

@@ -36,9 +36,9 @@
       <button class="btn" id="pasta" title="Abrir a pasta onde ficam os áudios e as transcrições">
         <i class="ph ph-folder-open" aria-hidden="true"></i> Pasta
       </button>
-      <a class="btn icone" id="engrenagem" href="config.html" title="Configurações" aria-label="Configurações">
+      <button class="btn icone" id="engrenagem" title="Configurações" aria-label="Configurações">
         <i class="ph ph-gear-six" aria-hidden="true"></i>
-      </a>
+      </button>
     </div>
   </header>
   <div class="faixa" id="faixa" hidden></div>
@@ -68,6 +68,9 @@
       </div>
     </form>
   </dialog>
+
+  <!-- Configurações abrem por cima da lista (a lista não é descarregada: voltar é instantâneo) -->
+  <div class="sobreposta" id="configuracoes" hidden></div>
 
   <div class="aviso" id="aviso" role="status"></div>
   <script type="module" src="app.js"></script>
