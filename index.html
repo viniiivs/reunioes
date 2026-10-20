@@ -1,0 +1,86 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <script src="web/iniciar.js"></script>
+  <link rel="manifest" href="manifest.webmanifest">
+  <meta name="theme-color" content="#f5f5f7" media="(prefers-color-scheme: light)">
+  <meta name="theme-color" content="#1e1e20" media="(prefers-color-scheme: dark)">
+  <meta name="description" content="Grava, transcreve e resume reuniões no navegador. A transcrição roda no seu computador.">
+  <link rel="apple-touch-icon" href="web/icone-192.png">
+  <title>Reuniões</title>
+  <link rel="icon" href="reunioes.png">
+  <link rel="stylesheet" href="base.css">
+  <link rel="stylesheet" href="app.css">
+  <link rel="stylesheet" href="tema-apple.css">
+  <link rel="stylesheet" href="liquid-glass.css">
+  <link rel="stylesheet" href="web/web.css">
+</head>
+<body>
+  <header class="topo">
+    <div class="marca">
+      <img src="reunioes.png" alt="" width="24" height="24">
+      <h1>Reuniões</h1>
+      <span class="resumo" id="resumo" aria-live="polite"></span>
+    </div>
+    <div class="ferramentas">
+      <button class="btn gravar" id="gravar" title="Começa a gravar agora">
+        <i class="ph ph-record" aria-hidden="true"></i><span>Gravar</span>
+      </button>
+      <button class="auto" id="auto" role="switch" aria-checked="false" title="Começa a gravar sozinho quando um app de chamada usa o microfone, e para quando ele solta">
+        <span class="sw" aria-hidden="true"><i></i></span>
+        <span class="auto-txt"><b>Gravar sozinho</b><small id="auto-status"></small></span>
+      </button>
+      <label class="busca">
+        <span class="sr">Filtrar gravações</span>
+        <i class="ph ph-magnifying-glass" aria-hidden="true"></i>
+        <input id="filtro" type="search" placeholder="Filtrar por data, app ou pessoa" autocomplete="off" spellcheck="false">
+      </label>
+      <button class="btn icone" id="atualizar" title="Atualizar (F5)" aria-label="Atualizar lista">
+        <i class="ph ph-arrows-clockwise" aria-hidden="true"></i>
+      </button>
+      <button class="btn" id="pasta" title="Abrir a pasta onde ficam os áudios e as transcrições">
+        <i class="ph ph-folder-open" aria-hidden="true"></i> Pasta
+      </button>
+      <button class="btn icone" id="engrenagem" title="Configurações" aria-label="Configurações">
+        <i class="ph ph-gear-six" aria-hidden="true"></i>
+      </button>
+    </div>
+  </header>
+  <div class="faixa" id="faixa" hidden></div>
+
+  <main class="lista" id="lista" aria-busy="true">
+    <div class="cabecalho" role="row">
+      <span>Data</span>
+      <span>Horário</span>
+      <span class="num">Duração</span>
+      <span class="num col-tam">Tamanho</span>
+      <span class="col-apps">Origem do som</span>
+      <span class="num">Falantes</span>
+      <span>Transcrição</span>
+      <span>Para você</span>
+      <span class="sr">Ações</span>
+    </div>
+    <div id="linhas"></div>
+  </main>
+
+  <dialog id="confirmar" aria-labelledby="conf-titulo">
+    <form method="dialog">
+      <h2 id="conf-titulo"></h2>
+      <p id="conf-texto"></p>
+      <div class="dialogo-acoes">
+        <button class="btn" value="nao" autofocus>Cancelar</button>
+        <button class="btn perigo" value="sim"><i class="ph ph-trash" aria-hidden="true"></i> Excluir</button>
+      </div>
+    </form>
+  </dialog>
+
+  <!-- Configurações abrem por cima da lista (a lista não é descarregada: voltar é instantâneo) -->
+  <div class="sobreposta" id="configuracoes" hidden></div>
+
+  <div class="aviso" id="aviso" role="status"></div>
+  <script type="module" src="app.js"></script>
+  <script src="liquid-glass.js" defer></script>
+</body>
+</html>

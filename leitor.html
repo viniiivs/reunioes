@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <script src="web/iniciar.js"></script>
+  <link rel="manifest" href="manifest.webmanifest">
+  <meta name="theme-color" content="#f5f5f7" media="(prefers-color-scheme: light)">
+  <meta name="theme-color" content="#1e1e20" media="(prefers-color-scheme: dark)">
+  <meta name="description" content="Grava, transcreve e resume reuniões no navegador. A transcrição roda no seu computador.">
+  <link rel="apple-touch-icon" href="web/icone-192.png">
+  <title>Reunião</title>
+  <link rel="icon" href="reunioes.png">
+  <link rel="stylesheet" href="base.css">
+  <link rel="stylesheet" href="leitor.css">
+  <link rel="stylesheet" href="tema-apple.css">
+  <link rel="stylesheet" href="liquid-glass.css">
+  <link rel="stylesheet" href="web/web.css">
+</head>
+<body>
+  <header class="topo">
+    <div class="titulo">
+      <h1 id="titulo">Reunião</h1>
+      <p id="meta"></p>
+    </div>
+    <div class="ferramentas">
+      <button class="btn icone" id="pasta" title="Mostrar os arquivos na pasta" aria-label="Mostrar os arquivos na pasta">
+        <i class="ph ph-folder-open" aria-hidden="true"></i>
+      </button>
+    </div>
+  </header>
+
+  <div class="abas" role="tablist" aria-label="Conteúdo">
+    <button role="tab" id="aba-resumo" aria-controls="painel-resumo" aria-selected="true"><i class="ph ph-sparkle" aria-hidden="true"></i>Resumo</button>
+    <button role="tab" id="aba-texto" aria-controls="painel-texto" aria-selected="false"><i class="ph ph-text-align-left" aria-hidden="true"></i>Transcrição</button>
+  </div>
+
+  <section class="painel" id="painel-resumo" role="tabpanel" aria-labelledby="aba-resumo">
+    <div class="resumo" id="resumo"></div>
+  </section>
+
+  <section class="painel" id="painel-texto" role="tabpanel" aria-labelledby="aba-texto" hidden>
+    <div class="barra-texto">
+      <nav class="pessoas" id="pessoas" aria-label="Filtrar por pessoa"></nav>
+      <div class="ferramentas">
+        <label class="busca">
+          <span class="sr">Procurar no texto</span>
+          <i class="ph ph-magnifying-glass" aria-hidden="true"></i>
+          <input id="procura" type="search" placeholder="Procurar no texto" autocomplete="off" spellcheck="false">
+        </label>
+        <button class="btn" id="copiar" title="Copiar a transcrição inteira">
+          <i class="ph ph-copy" aria-hidden="true"></i> Copiar
+        </button>
+        <button class="btn icone" id="abrir" title="Abrir o arquivo .md no editor" aria-label="Abrir o arquivo .md no editor">
+          <i class="ph ph-arrow-square-out" aria-hidden="true"></i>
+        </button>
+      </div>
+    </div>
+    <main class="texto" id="texto" aria-busy="true"></main>
+  </section>
+
+  <div class="aviso" id="aviso" role="status"></div>
+  <script type="module" src="leitor.js"></script>
+  <script src="liquid-glass.js" defer></script>
+</body>
+</html>
