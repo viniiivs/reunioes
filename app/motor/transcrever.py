@@ -60,7 +60,7 @@ def asr(audio, modelo, device, idioma):
             del m
             liberar()
     try:
-        al, meta = whisperx.load_align_model(language_code=idioma, device=device)
+        al, meta = whisperx.load_align_model(language_code=idioma, device=device, model_name=comum.alinhamento_local(idioma))
         r = whisperx.align(r["segments"], al, meta, audio, device, return_char_alignments=False)
         del al
     except Exception as e:  # noqa: BLE001  (idioma sem modelo de alinhamento: fica sem tempo por palavra)
@@ -106,7 +106,7 @@ def main():
     a = ap.parse_args()
     cfg = comum.config()
 
-    base = os.path.join(comum.pasta_gravacoes(), a.nome)
+    base = comum.base_de(a.nome)
     arq_eu, arq_outros = base + ".eu.flac", base + ".outros.flac"
     if not os.path.exists(arq_outros):
         raise SystemExit(f"[erro] nao achei {arq_outros}")

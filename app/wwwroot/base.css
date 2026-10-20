@@ -153,8 +153,7 @@ body { display: flex; flex-direction: column; overflow: hidden; }
 @keyframes gira { to { transform: rotate(360deg); } }
 /* Caixa do tamanho exato do glifo: girar em volta do proprio centro, nao do centro da coluna. */
 .girando {
-  display: inline-block; width: 1em; height: 1em; line-height: 1;
-  justify-self: start; align-self: start; transform-origin: 50% 50%;
+  display: inline-block; width: 1em; height: 1em; line-height: 1; transform-origin: 50% 50%;
   animation: gira 900ms linear infinite;
 }
 

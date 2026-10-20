@@ -18,7 +18,7 @@ def main():
     comum.utf8_stdout()
     if len(sys.argv) < 3:
         raise SystemExit(__doc__)
-    base = os.path.join(comum.pasta_gravacoes(), sys.argv[1])
+    base = comum.base_de(sys.argv[1])
     fal = json.load(open(base + ".falantes.json", encoding="utf-8"))
     rotulo_para_spk = {v: k for k, v in fal["nomes"].items()}
     try:

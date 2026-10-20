@@ -67,9 +67,10 @@ _mutex = None
 
 # ------------------------------------------------------------------ quem esta no microfone
 
-def capturando():
+def sessoes_ativas(fluxo):
+    """Executaveis (minusculos) com sessao de audio ATIVA. fluxo: eCapture (microfone) ou eRender (som)."""
     enum = comtypes.CoCreateInstance(CLSID_MMDeviceEnumerator, IMMDeviceEnumerator, comtypes.CLSCTX_INPROC_SERVER)
-    devs = enum.EnumAudioEndpoints(EDataFlow.eCapture.value, DEVICE_STATE.ACTIVE.value)
+    devs = enum.EnumAudioEndpoints(fluxo.value, DEVICE_STATE.ACTIVE.value)
     exes = set()
     for i in range(devs.GetCount()):
         try:
@@ -89,6 +90,9 @@ def capturando():
             continue
     return exes
 
+
+def capturando():
+    return sessoes_ativas(EDataFlow.eCapture)
 
 EnumWindowsProc = ctypes.WINFUNCTYPE(wt.BOOL, wt.HWND, wt.LPARAM)
 
@@ -116,22 +120,41 @@ def titulos_por_exe():
     return r
 
 
+def titulo_de_reuniao(exe, titulos=None):
+    tit = titulos if titulos is not None else titulos_por_exe()
+    for t in tit.get(exe, []):
+        m = TITULO_REUNIAO.search(t)
+        if m:
+            return "Meet" if m.group(0).lower() == "meet" else m.group(0)
+    return None
+
+
 def em_reuniao():
+    """(nome para mostrar, exe) do app de reuniao que esta no microfone agora, ou (None, None)."""
     exes = capturando()
     for exe in exes:
         if exe in APPS:
-            return APPS[exe]
+            return APPS[exe], exe
     navs = exes & NAVEGADORES.keys()
     if navs:
         tit = titulos_por_exe()
         for exe in navs:
-            for t in tit.get(exe, []):
-                m = TITULO_REUNIAO.search(t)
-                if m:
-                    nome = "Meet" if m.group(0).lower() == "meet" else m.group(0)
-                    return f"{nome} ({NAVEGADORES[exe]})"
-    return None
+            nome = titulo_de_reuniao(exe, tit)
+            if nome:
+                return f"{nome} ({NAVEGADORES[exe]})", exe
+    return None, None
 
+
+def ainda_na_chamada(exe):
+    """A chamada continua se o app segura o microfone OU ainda toca o audio da chamada.
+    Alguns apps fecham o microfone quando voce muta; o audio dos outros continua aberto
+    enquanto a chamada existir, entao mutar nao encerra a gravacao."""
+    if exe in capturando():
+        return True
+    if exe in sessoes_ativas(EDataFlow.eRender):
+        # navegador toca som de tudo (video, musica): so vale se a aba da reuniao ainda existe
+        return exe not in NAVEGADORES or titulo_de_reuniao(exe) is not None
+    return False
 
 # ------------------------------------------------------------------ gravador
 
@@ -146,19 +169,14 @@ def gravando():
 
 
 def abertas():
-    """Gravacoes sem .sha256 (= ainda gravando)."""
-    pasta = comum.pasta_gravacoes()
-    return [os.path.join(pasta, n[:-len(".eu.flac")]) for n in os.listdir(pasta)
-            if n.endswith(".eu.flac") and not os.path.exists(os.path.join(pasta, n[:-len(".eu.flac")] + ".sha256"))]
+    return comum.gravacoes_abertas()
 
 
 def iniciar(app=None):
-    pasta = comum.pasta_gravacoes()
     nome = dt.datetime.now().strftime("%Y-%m-%d_%H-%M")
-    base = os.path.join(pasta, nome)
-    if os.path.exists(base + ".eu.flac"):
+    if os.path.exists(comum.base_de(nome) + ".eu.flac"):
         nome = dt.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
-        base = os.path.join(pasta, nome)
+    base = comum.base_de(nome, criar=True)   # uma subpasta por gravacao
     subprocess.Popen([PYTHON, os.path.join(AQUI, "gravar.py"), nome], cwd=AQUI,
                      creationflags=subprocess.CREATE_NO_WINDOW,
                      stdout=open(base + ".gravar.log", "w", encoding="utf-8"), stderr=subprocess.STDOUT)
@@ -240,9 +258,11 @@ class Servico:
     def __init__(self):
         self.visto_desde = None
         self.sumiu_desde = None
-        self.minha = None
-        self.minha_app = None
-        self.suprimido = False
+        self.minha = None          # base da gravacao que o servico comecou
+        self.minha_app = None      # nome para mostrar ("Teams", "Meet (Chrome)")
+        self.minha_exe = None      # executavel que define se a chamada continua
+        self.suprimido = None      # exe cuja chamada voce parou na mao: nao religo ate ela acabar
+        self.parando_em = None     # segundos ate parar sozinho (para o app mostrar)
         self.trava = threading.Lock()
 
     def alternar(self):
@@ -251,43 +271,54 @@ class Servico:
             if gravando():
                 log.info("atalho: parando")
                 if self.minha:
-                    self.suprimido = True
-                    self.minha = None
+                    self.suprimido, self.minha = self.minha_exe, None
                 parar_todas()
             else:
                 log.info("atalho: gravando %s", os.path.basename(iniciar()))
 
     def passo(self):
-        cfg = comum.config()
-        if not cfg["gravarSozinho"]:
+        self.parando_em = None
+        if not comum.config()["gravarSozinho"]:
             self.visto_desde = None
             return None
-        app = em_reuniao()
         agora = time.monotonic()
         with self.trava:
             rodando = gravando()
-            if app:
-                self.sumiu_desde = None
-                self.visto_desde = self.visto_desde or agora
-                if self.minha and not rodando:
-                    log.info("gravacao %s parada na mao; nao religo ate %s soltar o mic", os.path.basename(self.minha), app)
-                    self.minha, self.suprimido = None, True
-                if not rodando and not self.minha and not self.suprimido and agora - self.visto_desde >= INICIO:
-                    self.minha, self.minha_app = iniciar(app), app
-                    log.info("%s no microfone: gravando %s", app, os.path.basename(self.minha))
-            else:
-                self.visto_desde = None
-                self.suprimido = False
-                if self.minha:
-                    self.sumiu_desde = self.sumiu_desde or agora
-                    if not rodando:
-                        self.minha = None
-                    elif agora - self.sumiu_desde >= FIM:
-                        log.info("%s soltou o microfone ha %ss: parando %s", self.minha_app, FIM, os.path.basename(self.minha))
+            if self.minha:
+                # Gravando por conta propria: so para quando o app que comecou sai da chamada.
+                if not rodando:
+                    log.info("gravacao %s parada na mao; nao religo ate %s sair da chamada", os.path.basename(self.minha), self.minha_app)
+                    self.suprimido, self.minha = self.minha_exe, None
+                elif ainda_na_chamada(self.minha_exe):
+                    self.sumiu_desde = None
+                else:
+                    if self.sumiu_desde is None:
+                        self.sumiu_desde = agora
+                    falta = FIM - (agora - self.sumiu_desde)
+                    if falta > 0:
+                        self.parando_em = int(falta + 0.5)
+                    else:
+                        log.info("%s saiu da chamada ha %ss: parando %s", self.minha_app, FIM, os.path.basename(self.minha))
                         open(self.minha + ".parar", "w").close()
                         winsound.Beep(660, 200); winsound.Beep(440, 300)
-                        self.minha, self.sumiu_desde = None, None
-        return app
+                        self.minha = self.sumiu_desde = None
+                return self.minha_app
+
+            if self.suprimido:
+                if ainda_na_chamada(self.suprimido):
+                    return None
+                self.suprimido = None
+            app, exe = em_reuniao()
+            if not app:
+                self.visto_desde = None
+                return None
+            if self.visto_desde is None:
+                self.visto_desde = agora
+            if not rodando and agora - self.visto_desde >= INICIO:
+                self.minha, self.minha_app, self.minha_exe = iniciar(app), app, exe
+                self.sumiu_desde = None
+                log.info("%s no microfone: gravando %s", app, os.path.basename(self.minha))
+            return app
 
 
 def main():
@@ -313,7 +344,7 @@ def main():
     while True:
         try:
             app = s.passo()
-            salvar_estado(gravarSozinho=comum.config()["gravarSozinho"], app=app,
+            salvar_estado(gravarSozinho=comum.config()["gravarSozinho"], app=app, parandoEm=s.parando_em,
                           gravando=bool(s.minha) or gravando(), atalhoOk=atalho.ok if atalho else None)
         except Exception as e:  # noqa: BLE001  (erro passageiro de COM/processo nao pode derrubar o servico)
             log.exception("erro no laco: %s", e)

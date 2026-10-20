@@ -150,7 +150,7 @@ function paraVoce(g) {
 function etapaCurta(e) {
   if (!e) return "Transcrevendo";
   const m = e.match(/^(\d)\/(\d) (.*)$/);
-  if (!m) return "Transcrevendo, " + e;
+  if (!m) return e === "carregando modelos" ? "Carregando modelos" : "Transcrevendo";
   return `Transcrevendo ${m[1]}/${m[2]}`;
 }
 
@@ -278,6 +278,8 @@ async function lerEstado() {
   botaoAuto.classList.toggle("alerta", est.gravarSozinho && !est.servico.rodando);
   botaoAuto.classList.toggle("no-mic", on && !!est.servico.app);
   $("#auto-status").textContent = est.gravarSozinho && !est.servico.rodando ? "serviço parado"
+    : on && est.servico.app && est.servico.parandoEm != null ? `${est.servico.app} saiu da chamada, paro em ${est.servico.parandoEm} s`
+    : on && est.servico.app && est.gravando ? `gravando ${est.servico.app}`
     : on && est.servico.app ? `${est.servico.app} no microfone`
     : on ? "ao entrar numa chamada" : "desligado";
 

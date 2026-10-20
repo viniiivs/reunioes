@@ -183,9 +183,8 @@ def main():
     if loop is None:
         raise SystemExit("[erro] saida padrao sem loopback. Use --saida.")
 
-    pasta = comum.pasta_gravacoes()
     nome = a.nome or dt.datetime.now().strftime("%Y-%m-%d_%H-%M")
-    base = os.path.join(pasta, nome)
+    base = comum.base_de(nome, criar=True)   # uma subpasta por gravacao
     arq_eu, arq_outros = base + ".eu.flac", base + ".outros.flac"
     if os.path.exists(arq_eu):
         raise SystemExit(f"[erro] ja existe: {arq_eu}")

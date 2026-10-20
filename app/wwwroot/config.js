@@ -290,6 +290,7 @@ aoMudar((m) => {
     }
     redesenharInstalacao();
     desenharRodape();
+    if (m.estado !== "rodando") desenharLateral();   // fim ou erro: libera (ou mantem travado) o menu
   } else if (m.evento === "atualizacao") {
     desenharAtualizacao(m.status);
   }
@@ -297,8 +298,8 @@ aoMudar((m) => {
 
 async function instalar() {
   instalando = true; estadoInst = {};
-  redesenharInstalacao(); desenharRodape();
-  try { await chamar("instalar"); } catch (e) { instalando = false; estadoInst.erro = e.message; redesenharInstalacao(); desenharRodape(); }
+  redesenharInstalacao(); desenharRodape(); desenharLateral();   // trava os passos ja: voltar no meio regravaria a configuracao
+  try { await chamar("instalar"); } catch (e) { instalando = false; estadoInst.erro = e.message; redesenharInstalacao(); desenharRodape(); desenharLateral(); }
 }
 
 // ---------------------------------------------------------------- atualizacoes
@@ -491,7 +492,7 @@ rodape.addEventListener("click", async (e) => {
 
 $("#passos").addEventListener("click", (e) => {
   const b = e.target.closest(".passo");
-  if (!b || b.disabled) return;
+  if (!b || b.disabled || (SETUP && (instalando || instalado))) return;
   if (SETUP) { visiveis()[passo].ler?.(); passo = +b.dataset.ir; desenhar(); }
   else document.getElementById("s-" + b.dataset.rolar)?.scrollIntoView();
 });

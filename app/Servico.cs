@@ -53,7 +53,7 @@ public static class Servico
     /// <summary>Estado escrito pelo servico a cada 3 s. Arquivo velho = servico parado.</summary>
     public static object Status()
     {
-        bool rodando = false; string? app = null; bool? atalhoOk = null;
+        bool rodando = false; string? app = null; bool? atalhoOk = null; int? parandoEm = null;
         try
         {
             using var d = JsonDocument.Parse(File.ReadAllText(Estado));
@@ -63,9 +63,10 @@ public static class Servico
             catch (ArgumentException) { }
             if ((DateTime.Now - quando).TotalSeconds > 30) rodando = false;
             if (r.TryGetProperty("app", out var a) && a.ValueKind == JsonValueKind.String) app = a.GetString();
+            if (r.TryGetProperty("parandoEm", out var pe) && pe.ValueKind == JsonValueKind.Number) parandoEm = pe.GetInt32();
             if (r.TryGetProperty("atalhoOk", out var k) && k.ValueKind is JsonValueKind.True or JsonValueKind.False) atalhoOk = k.GetBoolean();
         }
         catch (Exception) { }
-        return new { rodando, app, atalhoOk };
+        return new { rodando, app, atalhoOk, parandoEm };
     }
 }

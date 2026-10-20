@@ -60,7 +60,8 @@ public sealed class Gravacoes
         vigia?.Dispose();
         vigia = new FileSystemWatcher(d)
         {
-            NotifyFilter = NotifyFilters.FileName | NotifyFilters.Size | NotifyFilters.LastWrite,
+            NotifyFilter = NotifyFilters.FileName | NotifyFilters.DirectoryName | NotifyFilters.Size | NotifyFilters.LastWrite,
+            IncludeSubdirectories = true,   // uma subpasta por gravacao
             EnableRaisingEvents = true,
         };
         FileSystemEventHandler h = (_, _) => AvisarLogo();
@@ -118,9 +119,9 @@ public sealed class Gravacoes
 
         var lista = new List<Gravacao>();
         if (!Directory.Exists(Dir)) return lista;
-        foreach (var eu in Directory.GetFiles(Dir, "*.eu.flac"))
+        foreach (var b in Bases())
         {
-            var b = Path.GetFileName(eu)[..^".eu.flac".Length];
+            var eu = Caminho(b, "eu.flac");
             var arqs = Arquivos(b);
             long bytes = arqs.Where(a => !a.EndsWith(".parar")).Sum(a => new FileInfo(a).Length);
 
@@ -190,10 +191,55 @@ public sealed class Gravacoes
         return lista.OrderByDescending(g => g.Inicio, StringComparer.Ordinal).ToList();
     }
 
-    string Caminho(string b, string ext) => Path.Combine(Dir, b + "." + ext);
+    /// <summary>Cada gravacao mora em &lt;pasta&gt;\&lt;nome&gt;\&lt;nome&gt;.*; versoes antigas deixavam tudo solto
+    /// na raiz (a migracao move; ate la, as duas formas funcionam).</summary>
+    string DirDe(string b)
+    {
+        var sub = Path.Combine(Dir, b);
+        return Directory.Exists(sub) ? sub : Dir;
+    }
+
+    string Caminho(string b, string ext) => Path.Combine(DirDe(b), b + "." + ext);
 
     // "2026-10-14_17-08.*" nao pega "2026-10-14_17-08_x.*": o ponto logo depois do nome separa.
-    string[] Arquivos(string b) => Directory.GetFiles(Dir, b + ".*");
+    string[] Arquivos(string b) => Directory.GetFiles(DirDe(b), b + ".*");
+
+    IEnumerable<string> Bases()
+    {
+        if (!Directory.Exists(Dir)) yield break;
+        foreach (var eu in Directory.GetFiles(Dir, "*.eu.flac")) yield return Path.GetFileName(eu)[..^".eu.flac".Length];
+        foreach (var sub in Directory.GetDirectories(Dir))
+        {
+            var n = Path.GetFileName(sub);
+            if (File.Exists(Path.Combine(sub, n + ".eu.flac"))) yield return n;
+        }
+    }
+
+    /// <summary>Move gravacoes soltas na raiz para uma subpasta cada. Pula a que ainda esta sendo
+    /// gravada ou transcrita (arquivos abertos); ela e migrada na proxima abertura.</summary>
+    public int Migrar()
+    {
+        if (!Directory.Exists(Dir)) return 0;
+        var procs = Pythons();
+        bool gravando = procs.Any(p => p.Linha.Contains("gravar.py"));
+        int n = 0;
+        foreach (var eu in Directory.GetFiles(Dir, "*.eu.flac"))
+        {
+            var b = Path.GetFileName(eu)[..^".eu.flac".Length];
+            if (gravando && !File.Exists(Path.Combine(Dir, b + ".sha256"))) continue;
+            if (procs.Any(p => (p.Linha.Contains("transcrever.py") || p.Linha.Contains("nomear.py")) && Cita(p.Linha, b))) continue;
+            var sub = Path.Combine(Dir, b);
+            Directory.CreateDirectory(sub);
+            try
+            {
+                foreach (var a in Directory.GetFiles(Dir, b + ".*"))
+                    File.Move(a, Path.Combine(sub, Path.GetFileName(a)));
+                n++;
+            }
+            catch (IOException) { }   // arquivo em uso: tenta de novo na proxima abertura
+        }
+        return n;
+    }
 
     static string LerCompartilhado(string p)
     {
@@ -247,7 +293,10 @@ public sealed class Gravacoes
         Directory.CreateDirectory(Dir);
         if (b == null) return new[] { "explorer.exe", $"\"{Dir}\"" };
         Validar(b);
-        return new[] { "explorer.exe", $"/select,\"{Caminho(b, "eu.flac")}\"" };
+        var sub = Path.Combine(Dir, b);
+        return Directory.Exists(sub)
+            ? new[] { "explorer.exe", $"\"{sub}\"" }
+            : new[] { "explorer.exe", $"/select,\"{Caminho(b, "eu.flac")}\"" };
     }
 
     public string[] Arquivo(string b, string ext)
@@ -264,7 +313,9 @@ public sealed class Gravacoes
         if (!File.Exists(md)) throw new InvalidOperationException("Essa gravação ainda não foi transcrita.");
         var g = Listar().FirstOrDefault(x => x.Base == b);
         var rj = Caminho(b, "resumo.json");
-        var resumo = File.Exists(rj) ? JsonNode.Parse(LerCompartilhado(rj)) : null;
+        JsonNode? resumo = null;
+        try { if (File.Exists(rj)) resumo = JsonNode.Parse(LerCompartilhado(rj)); }
+        catch (Exception) { }   // resumo corrompido nao pode impedir de ler a transcricao
         return new { texto = LerCompartilhado(md), gravacao = g, resumo, resumoAtivo = cfg().Resumo.Ativo };
     }
 
@@ -283,16 +334,14 @@ public sealed class Gravacoes
     {
         if (GravandoAgora())
         {
-            foreach (var eu in Directory.GetFiles(Dir, "*.eu.flac"))
-            {
-                var b = Path.GetFileName(eu)[..^".eu.flac".Length];
+            foreach (var b in Bases())
                 if (!File.Exists(Caminho(b, "sha256"))) File.WriteAllText(Caminho(b, "parar"), "");
-            }
             return;
         }
         Directory.CreateDirectory(Dir);
         var nome = DateTime.Now.ToString("yyyy-MM-dd_HH-mm");
         if (File.Exists(Caminho(nome, "eu.flac"))) nome = DateTime.Now.ToString("yyyy-MM-dd_HH-mm-ss");
+        Directory.CreateDirectory(Path.Combine(Dir, nome));   // o gravar.py usa a mesma subpasta
         var psi = Py("gravar.py", false);
         psi.ArgumentList.Add(nome);
         psi.RedirectStandardOutput = true;
@@ -343,8 +392,13 @@ public sealed class Gravacoes
         {
             var fi = new FileInfo(a);
             if (fi.IsReadOnly) fi.IsReadOnly = false; // arquivo somente leitura: a lixeira recusa
-            FileSystem.DeleteFile(a, UIOption.OnlyErrorDialogs, RecycleOption.SendToRecycleBin);
         }
+        var sub = Path.Combine(Dir, b);
+        if (Directory.Exists(sub))
+            FileSystem.DeleteDirectory(sub, UIOption.OnlyErrorDialogs, RecycleOption.SendToRecycleBin);
+        else
+            foreach (var a in Arquivos(b))
+                FileSystem.DeleteFile(a, UIOption.OnlyErrorDialogs, RecycleOption.SendToRecycleBin);
     }
 
     /// <summary>Da nome a uma voz ("Falante 1" -> "Ana") e memoriza para as proximas reunioes.</summary>

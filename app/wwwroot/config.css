@@ -101,7 +101,7 @@
 .etapas { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; }
 .etapa { display: grid; grid-template-columns: 24px 1fr; gap: 10px; padding: 10px 0; border-top: 1px solid var(--line); }
 .etapa:first-child { border-top: 0; }
-.etapa .ic { font-size: 18px; color: var(--faint); margin-top: 1px; }
+.etapa .ic { font-size: 18px; color: var(--faint); margin-top: 1px; justify-self: start; align-self: start; }
 .etapa.rodando .ic { color: var(--accent); }
 .etapa.ok .ic { color: var(--accent); }
 .etapa.erro .ic { color: var(--danger); }

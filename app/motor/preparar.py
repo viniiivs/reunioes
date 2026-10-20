@@ -38,12 +38,17 @@ def baixar_com_progresso(repo, total_estimado=None, token=None, padroes=None):
 
     from huggingface_hub import HfApi, snapshot_download
 
+    # list_repo_tree traz o tamanho real de cada arquivo (inclusive os grandes, guardados no LFS);
+    # model_info as vezes devolve tamanho vazio para eles e a barra "terminava" com 0 de 0 GB.
+    total = 0
     try:
-        info = HfApi().model_info(repo, files_metadata=True, token=token)
-        total = sum((s.size or 0) for s in info.siblings
-                    if not padroes or any(fnmatch(s.rfilename, p) for p in padroes)) or total_estimado
+        for f in HfApi().list_repo_tree(repo, recursive=True, token=token):
+            if not hasattr(f, "size") or (padroes and not any(fnmatch(f.path, p) for p in padroes)):
+                continue
+            total += (f.lfs.size if getattr(f, "lfs", None) else f.size) or 0
     except Exception:  # noqa: BLE001
-        total = total_estimado
+        pass
+    total = total or total_estimado
     pasta = os.path.join(os.environ["HF_HOME"], "hub", "models--" + repo.replace("/", "--"))
     antes = tamanho_pasta(pasta)
     erro = []
@@ -58,22 +63,13 @@ def baixar_com_progresso(repo, total_estimado=None, token=None, padroes=None):
     t.start()
     while t.is_alive():
         t.join(1.5)
-        if total:
-            feito = min(total, max(0, tamanho_pasta(pasta) - antes) if antes < total else total)
-            print(f"[progresso] {feito} {total}", flush=True)
+        feito = max(0, tamanho_pasta(pasta) - antes)
+        if total or feito:
+            print(f"[progresso] {feito} {max(total or 0, feito)}", flush=True)
     if erro:
         raise erro[0]
 
 
-ALINHAMENTO_HF = {  # o whisperx baixa do Hugging Face para estes idiomas (os demais vem do torchaudio)
-    "pt": "jonatasgrosman/wav2vec2-large-xlsr-53-portuguese",
-    "ja": "jonatasgrosman/wav2vec2-large-xlsr-53-japanese",
-    "zh": "jonatasgrosman/wav2vec2-large-xlsr-53-chinese-zh-cn",
-    "nl": "jonatasgrosman/wav2vec2-large-xlsr-53-dutch",
-    "uk": "Yehor/wav2vec2-xls-r-300m-uk-with-small-lm",
-    "ru": "jonatasgrosman/wav2vec2-large-xlsr-53-russian",
-    "pl": "jonatasgrosman/wav2vec2-large-xlsr-53-polish",
-}
 
 
 def main():
@@ -91,12 +87,12 @@ def main():
 
     print("[etapa] Baixando o modelo de alinhamento de palavras", flush=True)
     import whisperx
-    repo = ALINHAMENTO_HF.get(cfg["idioma"])
+    repo = comum.ALINHAMENTO_HF.get(cfg["idioma"])
     if repo:
         # so o que o transformers carrega: pesos em safetensors + configuracoes/vocabulario
-        baixar_com_progresso(repo, padroes=["*.json", "model.safetensors"])
+        baixar_com_progresso(repo, padroes=comum.PADROES_ALINHAMENTO)
     try:
-        whisperx.load_align_model(language_code=cfg["idioma"], device="cpu")
+        whisperx.load_align_model(language_code=cfg["idioma"], device="cpu", model_name=comum.alinhamento_local(cfg["idioma"]))
         print("[ok] Alinhamento pronto", flush=True)
     except Exception as e:  # noqa: BLE001
         print(f"[ok] Este idioma não tem alinhamento por palavra ({str(e).splitlines()[0][:80]}); a transcrição funciona igual", flush=True)

@@ -33,6 +33,7 @@ public static class Nucleo
     {
         var c = Config;
         if (!c.ConfiguracaoConcluida) return;
+        try { Gravacoes.Migrar(); } catch (Exception) { }   // gravacoes soltas da 1.0.0 -> uma subpasta cada
         bool scriptsNovos = Motor.SincronizarScripts(c);
         _ = Task.Run(() => Motor.LimparTorch(c));   // instalacoes da 1.0.0 ficaram com 2,6 GB de .lib inuteis
         var st = (dynamic)Servico.Status();

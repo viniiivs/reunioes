@@ -51,6 +51,20 @@ public sealed class JanelaWeb : Form
         Registry.GetValue(@"HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Themes\Personalize",
             "AppsUseLightTheme", 1) is int v && v == 0;
 
+    // Fechar no meio da instalacao do motor: confirma e cancela (senao o download segue escondido
+    // e a proxima abertura comeca outra instalacao por cima).
+    protected override void OnFormClosing(FormClosingEventArgs e)
+    {
+        if (Nucleo.Motor.Rodando && Base == null && e.CloseReason == CloseReason.UserClosing)
+        {
+            var r = MessageBox.Show(this, "A instalação do motor de transcrição ainda está rodando.\n\nFechar agora cancela a instalação. Dá para continuar depois, de onde parou.",
+                TituloPrincipal, MessageBoxButtons.OKCancel, MessageBoxIcon.Warning, MessageBoxDefaultButton.Button2);
+            if (r != DialogResult.OK) { e.Cancel = true; return; }
+            Nucleo.Motor.Cancelar();
+        }
+        base.OnFormClosing(e);
+    }
+
     protected override void OnHandleCreated(EventArgs e)
     {
         base.OnHandleCreated(e);
