@@ -185,3 +185,9 @@ dialog p { margin: 0 0 20px; color: var(--muted); }
 .sobreposta[hidden] { display: none; }
 .sobreposta iframe { width: 100%; height: 100%; border: 0; display: block; background: var(--bg); }
 @media (prefers-reduced-motion: reduce) { .sobreposta { transition: none; } }
+
+/* A célula do "Para você" não pode cortar: o botão tem recuo negativo para o texto alinhar com o
+   título da coluna, e o fundo do hover e o anel de foco passam da borda. As reticências do texto
+   longo ficam no próprio botão (max-width + span com ellipsis). */
+.cel.cel-botao { overflow: visible; }
+.cel-botao .veredito, .cel-botao .link { max-width: calc(100% + 8px); }

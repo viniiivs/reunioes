@@ -115,7 +115,7 @@ function linha(g, d) {
       <span class="cel col-apps">${apps}</span>
       <span class="num">${falantes}</span>
       <span class="cel">${estado(g)}</span>
-      <span class="cel">${paraVoce(g)}</span>
+      <span class="cel cel-botao">${paraVoce(g)}</span>
       <div class="acoes">${acoes(g)}</div>
     </div>`;
 }
