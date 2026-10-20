@@ -20,7 +20,9 @@ if (wv) {
 
 // Uma tela embutida (Configurações por cima da lista) usa a ponte da janela que a contém:
 // assim abrir e fechar não recarrega nada e os avisos do app chegam às duas.
-const pai = !wv && window.parent !== window ? window.parent.ponteReunioes : null;
+// Atenção: dentro do WebView2 o iframe TAMBÉM tem chrome.webview, mas o host só recebe mensagens
+// do documento principal. Embutida, a tela precisa sempre usar a ponte da janela principal.
+const pai = window.parent !== window ? window.parent.ponteReunioes || null : null;
 
 export function chamar(cmd, args = {}) {
   if (pai) return pai.chamar(cmd, args);
