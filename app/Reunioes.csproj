@@ -1,0 +1,38 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net8.0-windows</TargetFramework>
+    <UseWindowsForms>true</UseWindowsForms>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <AssemblyName>Reunioes</AssemblyName>
+    <RootNamespace>Reunioes</RootNamespace>
+    <ApplicationIcon>icone\reunioes.ico</ApplicationIcon>
+    <ApplicationHighDpiMode>PerMonitorV2</ApplicationHighDpiMode>
+    <Product>Reuniões</Product>
+    <AssemblyTitle>Reuniões</AssemblyTitle>
+    <Version>1.0.0</Version>
+    <Authors>Vinícius Vieira</Authors>
+    <Company>Vinícius Vieira</Company>
+    <Copyright>© 2026 Vinícius Vieira</Copyright>
+    <Description>Grava, transcreve e resume reuniões no seu próprio computador.</Description>
+    <SatelliteResourceLanguages>pt-BR</SatelliteResourceLanguages>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Web.WebView2" Version="1.0.2903.40" />
+    <PackageReference Include="NAudio.Wasapi" Version="2.2.1" />
+    <PackageReference Include="System.Management" Version="8.0.0" />
+    <PackageReference Include="System.Security.Cryptography.ProtectedData" Version="8.0.0" />
+    <PackageReference Include="Velopack" Version="1.2.161" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <EmbeddedResource Include="icone\reunioes.ico" LogicalName="reunioes.ico" />
+    <None Include="wwwroot\**\*" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="motor\**\*" Exclude="motor\__pycache__\**" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="ferramentas\**\*" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
+</Project>

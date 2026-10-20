@@ -1,0 +1,25 @@
+{
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["precisa_agir", "veredito", "acoes", "atencao", "resumo"],
+  "properties": {
+    "precisa_agir": { "type": "boolean" },
+    "veredito": { "type": "string" },
+    "acoes": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["acao", "prazo", "pedido_por", "tempo"],
+        "properties": {
+          "acao": { "type": "string" },
+          "prazo": { "type": ["string", "null"] },
+          "pedido_por": { "type": ["string", "null"] },
+          "tempo": { "type": "string" }
+        }
+      }
+    },
+    "atencao": { "type": "array", "items": { "type": "string" } },
+    "resumo": { "type": "array", "items": { "type": "string" } }
+  }
+}

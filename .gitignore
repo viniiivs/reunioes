@@ -1,0 +1,9 @@
+bin/
+obj/
+build/publish/
+build/releases/
+app/ferramentas/
+__pycache__/
+*.pyc
+.vs/
+*.user
