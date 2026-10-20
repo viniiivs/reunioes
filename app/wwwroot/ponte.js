@@ -24,8 +24,14 @@ if (wv) {
 // do documento principal. Embutida, a tela precisa sempre usar a ponte da janela principal.
 const pai = window.parent !== window ? window.parent.ponteReunioes || null : null;
 
+// Versão web (build/web.ps1 marca as páginas): os comandos rodam no próprio navegador.
+export const naWeb = !!window.REUNIOES_WEB;
+const web = naWeb && !pai ? await import("./web/backend.js") : null;
+if (web) web.ligar((m) => ouvintes.forEach((f) => f(m)));
+
 export function chamar(cmd, args = {}) {
   if (pai) return pai.chamar(cmd, args);
+  if (web) return web.chamar(cmd, args);
   if (!wv) return simular(cmd, args);
   return new Promise((ok, falha) => {
     const id = ++seq;

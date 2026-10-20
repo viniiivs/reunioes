@@ -148,3 +148,7 @@
 .info > span.ruim { color: var(--danger); }
 .info > .btn { flex: none; }
 
+
+/* versão web: guia logo abaixo de um cartão de campos */
+.pilha + .guia { margin-top: 16px; }
+

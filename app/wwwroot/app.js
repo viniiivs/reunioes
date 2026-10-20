@@ -1,4 +1,4 @@
-import { chamar, aoMudar } from "./ponte.js";
+import { chamar, aoMudar, naWeb } from "./ponte.js";
 import * as f from "./fmt.js";
 import { animaSw } from "./controles.js";
 
@@ -66,7 +66,7 @@ function desenhar() {
     linhas.innerHTML = `
       <div class="vazio">
         <h2>Nenhuma gravação ainda</h2>
-        <p>Clique em Gravar no topo${est?.atalho ? `, use ${est.atalho.split("+").map((k) => `<kbd>${f.esc(k.length === 1 ? k.toUpperCase() : k[0].toUpperCase() + k.slice(1))}</kbd>`).join(" ")}` : ""} ou entre numa chamada com “Gravar sozinho” ligado. As gravações aparecem aqui sozinhas.</p>
+        <p>${naWeb ? "Clique em Gravar e escolha a aba ou a tela da reunião, marcando “Compartilhar áudio”. Ou arraste para cá um arquivo de áudio que já tenha." : `Clique em Gravar no topo${est?.atalho ? `, use ${est.atalho.split("+").map((k) => `<kbd>${f.esc(k.length === 1 ? k.toUpperCase() : k[0].toUpperCase() + k.slice(1))}</kbd>`).join(" ")}` : ""} ou entre numa chamada com “Gravar sozinho” ligado. As gravações aparecem aqui sozinhas.`}</p>
       </div>`;
     return;
   }
@@ -161,9 +161,12 @@ function acoes(g) {
   else if (g.estado === "sem") principal = `<button class="btn" data-acao="transcrever"><i class="ph ph-waveform" aria-hidden="true"></i> Transcrever</button>`;
   else principal = `<button class="btn" disabled><i class="ph ph-waveform" aria-hidden="true"></i> Transcrever</button>`;
   const ocupada = g.estado === "gravando" || g.estado === "transcrevendo" || g.estado === "fila";
+  if (naWeb && g.estado === "gravando") return "";
   return `${principal}
-    <button class="btn icone" data-acao="pasta" title="Mostrar os arquivos na pasta" aria-label="Mostrar os arquivos na pasta"><i class="ph ph-folder-open" aria-hidden="true"></i></button>
-    <button class="btn icone perigo-hover" data-acao="excluir" ${ocupada ? "disabled" : ""} title="${ocupada ? "Não dá para excluir agora" : "Excluir (vai para a Lixeira)"}" aria-label="Excluir gravação"><i class="ph ph-trash" aria-hidden="true"></i></button>`;
+    ${naWeb
+      ? `<button class="btn icone" data-acao="baixar" title="Baixar o áudio e a transcrição" aria-label="Baixar o áudio e a transcrição"><i class="ph ph-download-simple" aria-hidden="true"></i></button>`
+      : `<button class="btn icone" data-acao="pasta" title="Mostrar os arquivos na pasta" aria-label="Mostrar os arquivos na pasta"><i class="ph ph-folder-open" aria-hidden="true"></i></button>`}
+    <button class="btn icone perigo-hover" data-acao="excluir" ${ocupada ? "disabled" : ""} title="${ocupada ? "Não dá para excluir agora" : naWeb ? "Excluir" : "Excluir (vai para a Lixeira)"}" aria-label="Excluir gravação"><i class="ph ph-trash" aria-hidden="true"></i></button>`;
 }
 
 // ---------------------------------------------------------------- acoes
@@ -194,17 +197,21 @@ async function agir(acao, g, botao) {
         return carregar();
       case "pasta":
         return await chamar("pasta", { base: g.base });
+      case "baixar":
+        return await chamar("baixar", { base: g.base });
       case "excluir": {
         const tem = g.estado === "pronta" ? "o áudio e a transcrição" : "o áudio";
         $("#conf-titulo").textContent = `Excluir a gravação de ${titulo(g)}?`;
-        $("#conf-texto").textContent = `Os arquivos (${tem}, ${f.tamanho(g.bytes)}) vão para a Lixeira do Windows.`;
+        $("#conf-texto").textContent = naWeb
+          ? `Apaga ${tem} (${f.tamanho(g.bytes)}) deste navegador. Não dá para desfazer: baixe antes se quiser guardar.`
+          : `Os arquivos (${tem}, ${f.tamanho(g.bytes)}) vão para a Lixeira do Windows.`;
         const dlg = $("#confirmar");
         dlg.returnValue = "";
         dlg.showModal();
         const r = await new Promise((ok) => dlg.addEventListener("close", () => ok(dlg.returnValue), { once: true }));
         if (r !== "sim") return;
         await chamar("excluir", { base: g.base });
-        avisar(`Gravação de ${titulo(g)} enviada para a Lixeira.`);
+        avisar(naWeb ? `Gravação de ${titulo(g)} excluída.` : `Gravação de ${titulo(g)} enviada para a Lixeira.`);
         return carregar();
       }
     }
@@ -263,30 +270,34 @@ let est = null;
 const ATALHO_NOME = (a) => (a || "").split("+").map((p) => p.length === 1 ? p.toUpperCase() : p[0].toUpperCase() + p.slice(1)).join(" + ");
 
 async function lerEstado() {
+  const resumoAntes = est?.resumoAtivo;
   try { est = await chamar("estado"); } catch { return; }
   if (!est) return;
+  if (carregou && resumoAntes !== est.resumoAtivo) desenhar();   // a coluna "Para você" depende disso
 
   botaoGravar.classList.toggle("ativo", est.gravando);
   botaoGravar.querySelector("i").className = `ph ${est.gravando ? "ph-stop" : "ph-record"}`;
   botaoGravar.querySelector("span").textContent = est.gravando ? "Parar" : "Gravar";
   botaoGravar.title = est.gravando ? "Para a gravação" : `Começa a gravar agora${est.atalho ? ` (${ATALHO_NOME(est.atalho)})` : ""}`;
 
-  const on = est.gravarSozinho && est.servico.rodando;
-  const mudou = botaoAuto.getAttribute("aria-checked") !== String(est.gravarSozinho);
-  botaoAuto.setAttribute("aria-checked", String(est.gravarSozinho));
-  if (mudou) animaSw(botaoAuto.querySelector(".sw i"), est.gravarSozinho, false);
-  botaoAuto.classList.toggle("alerta", est.gravarSozinho && !est.servico.rodando);
-  botaoAuto.classList.toggle("no-mic", on && !!est.servico.app);
-  $("#auto-status").textContent = est.gravarSozinho && !est.servico.rodando ? "serviço parado"
-    : on && est.servico.app && est.servico.parandoEm != null ? `${est.servico.app} saiu da chamada, paro em ${est.servico.parandoEm} s`
-    : on && est.servico.app && est.gravando ? `gravando ${est.servico.app}`
-    : on && est.servico.app ? `${est.servico.app} no microfone`
+    if (!naWeb) {   // a versão web não tem gravação automática
+    const on = est.gravarSozinho && est.servico.rodando;
+    const mudou = botaoAuto.getAttribute("aria-checked") !== String(est.gravarSozinho);
+    botaoAuto.setAttribute("aria-checked", String(est.gravarSozinho));
+    if (mudou) animaSw(botaoAuto.querySelector(".sw i"), est.gravarSozinho, false);
+    botaoAuto.classList.toggle("alerta", est.gravarSozinho && !est.servico.rodando);
+    botaoAuto.classList.toggle("no-mic", on && !!est.servico.app);
+    $("#auto-status").textContent = est.gravarSozinho && !est.servico.rodando ? "serviço parado"
+      : on && est.servico.app && est.servico.parandoEm != null ? `${est.servico.app} saiu da chamada, paro em ${est.servico.parandoEm} s`
+      : on && est.servico.app && est.gravando ? `gravando ${est.servico.app}`
+      : on && est.servico.app ? `${est.servico.app} no microfone`
     : on ? "ao entrar numa chamada" : "desligado";
+  }
 
   // faixa de aviso: motor pendente tem prioridade sobre atualizacao pronta
   const faixa = $("#faixa");
   if (!est.motorPronto) {
-    faixa.innerHTML = `<i class="ph ph-warning" aria-hidden="true"></i><span>O motor de transcrição precisa ser instalado ou atualizado.</span><button class="btn" data-config="motor">Abrir Configurações</button>`;
+    faixa.innerHTML = `<i class="ph ph-warning" aria-hidden="true"></i><span>${naWeb ? "O modelo de transcrição ainda não foi baixado neste navegador." : "O motor de transcrição precisa ser instalado ou atualizado."}</span><button class="btn" data-config="motor">Abrir Configurações</button>`;
     faixa.hidden = false;
   } else if (est.atualizacao?.estado === "pronta") {
     faixa.innerHTML = `<i class="ph ph-arrow-circle-up" aria-hidden="true"></i><span>A versão ${f.esc(est.atualizacao.nova)} está pronta.</span><button class="btn primario" data-acao="atualizar">Reiniciar e atualizar</button>`;
@@ -313,7 +324,7 @@ botaoGravar.addEventListener("click", async () => {
   botaoGravar.disabled = true;
   try {
     await chamar("gravar");
-    avisar(est?.gravando ? "Gravação parada." : "Gravando. Clique em Parar quando a reunião acabar.");
+    avisar(est?.gravando ? (naWeb ? "Gravação parada. A transcrição já começou." : "Gravação parada.") : naWeb ? "Gravando. Deixe esta aba aberta e clique em Parar quando a reunião acabar." : "Gravando. Clique em Parar quando a reunião acabar.");
   } catch (e) { avisar(e.message); }
   setTimeout(() => { botaoGravar.disabled = false; lerEstado(); carregar(); }, 1500);
 });
@@ -361,6 +372,41 @@ setInterval(lerEstado, 3000);
 // pré-carrega as Configurações quando a lista já apareceu: abrir fica instantâneo
 setTimeout(() => (window.requestIdleCallback || setTimeout)(prepararConfiguracoes), 1200);
 
-aoMudar((m) => { if (m.evento === "mudou") carregar(); else if (m.evento === "atualizacao") lerEstado(); });
+aoMudar((m) => {
+  if (m.evento === "mudou") { carregar(); if (naWeb) lerEstado(); }
+  else if (m.evento === "atualizacao") lerEstado();
+  else if (m.evento === "aviso") avisar(m.msg);
+});
+
+// ---------------------------------------------------------------- versão web: sem pasta nem gravação automática; importa arquivos
+
+if (naWeb) {
+  if (!(await chamar("config")).configuracaoConcluida) location.replace("config.html?modo=setup");
+  botaoAuto.remove();
+  // "Pasta" vira "Importar" (troca o botão para soltar o clique de abrir pasta do desktop)
+  const imp = $("#pasta").cloneNode(false);
+  imp.innerHTML = `<i class="ph ph-upload-simple" aria-hidden="true"></i> Importar`;
+  imp.title = "Transcrever um arquivo de áudio ou vídeo que você já tem";
+  $("#pasta").replaceWith(imp);
+  const entrada = Object.assign(document.createElement("input"), { type: "file", accept: "audio/*,video/*", multiple: true, hidden: true });
+  document.body.append(entrada);
+  imp.addEventListener("click", () => entrada.click());
+  const importar = async (arquivos) => {
+    for (const a of arquivos) {
+      try { avisar(`Lendo ${a.name}...`); await chamar("importar", { arquivo: a }); avisar(`${a.name} importado. A transcrição já começou.`); }
+      catch (e) { avisar(e.message); }
+    }
+  };
+  entrada.addEventListener("change", () => { importar([...entrada.files]); entrada.value = ""; });
+  addEventListener("dragover", (e) => { if (e.dataTransfer?.types.includes("Files")) { e.preventDefault(); document.body.classList.add("soltar"); } });
+  addEventListener("dragleave", (e) => { if (!e.relatedTarget) document.body.classList.remove("soltar"); });
+  addEventListener("drop", (e) => {
+    document.body.classList.remove("soltar");
+    if (!e.dataTransfer?.files.length) return;
+    e.preventDefault();
+    importar([...e.dataTransfer.files]);
+  });
+}
+
 esqueleto();
 carregar();

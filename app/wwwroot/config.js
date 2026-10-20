@@ -1,4 +1,4 @@
-import { chamar, aoMudar } from "./ponte.js";
+import { chamar, aoMudar, naWeb } from "./ponte.js";
 import { interruptor, ligarInterruptores, ligado, animaSw, avisar } from "./controles.js";
 import { esc } from "./fmt.js";
 
@@ -39,7 +39,8 @@ const SECOES = [
   { id: "atualizacoes", titulo: "Atualizações", icone: "arrows-clockwise", so: "config", render: rAtualizacoes, ler: lAtualizacoes },
   { id: "sobre", titulo: "Sobre", icone: "info", so: "config", render: rSobre },
 ];
-const visiveis = () => SECOES.filter((s) => !s.so || s.so === (SETUP ? "setup" : "config"));
+// A versão web tem outras seções (sem pastas, motor Python, atalho, atualizações): ver o fim do arquivo.
+const visiveis = () => (naWeb ? SECOES_WEB : SECOES).filter((s) => !s.so || s.so === (SETUP ? "setup" : "config"));
 
 function rBoasVindas() {
   return `
@@ -253,6 +254,7 @@ function rSobre() {
 // ---------------------------------------------------------------- tamanho e espaco
 
 function tamanhoTotal() {
+  if (naWeb) return tamanhoWeb(cfg.modelo, cfg.usarGpu);
   const gpu = cfg.usarGpu && sis.nvidia;
   return 0.1 + (gpu ? 3.0 : 0.9) + (QUALIDADES.find((q) => q.id === cfg.modelo)?.gb || 3) + (cfg.idioma === "pt" ? 1.3 : 0.4) + (cfg.separarVozes ? 0.1 : 0);
 }
@@ -295,7 +297,7 @@ aoMudar((m) => {
     if (m.estado === "fim") {
       for (let i = 1; i <= m.total; i++) estadoInst[i] = { estado: "ok" };
       instalando = false; instalado = true;
-      if (!SETUP) { pendentes = []; avisar("Motor atualizado."); setTimeout(() => desenharSecao("motor"), 800); }
+      if (!SETUP) { pendentes = []; avisar(naWeb ? "Modelo baixado." : "Motor atualizado."); setTimeout(() => desenharSecao("motor"), 800); }
     }
     redesenharInstalacao();
     desenharRodape();
@@ -339,7 +341,7 @@ function desenharAtualizacao(s) {
 function secaoHtml(s) { return `<section class="secao" id="s-${s.id}" data-secao="${s.id}">${s.render()}</section>`; }
 
 function desenharSecao(id) {
-  const s = SECOES.find((x) => x.id === id);
+  const s = visiveis().find((x) => x.id === id);
   const el = document.querySelector(`[data-secao="${id}"]`);
   if (s && el) el.innerHTML = s.render();
 }
@@ -373,14 +375,14 @@ function desenharRodape() {
         ? `<button class="btn primario grande" data-nav="prox">Continuar</button>`
         : instalando
           ? `<button class="btn grande" id="cancelarInst">Cancelar</button>`
-          : `<button class="btn primario grande" id="instalarAgora"><i class="ph ph-download-simple"></i> ${estadoInst.erro ? "Tentar de novo" : "Instalar"}</button>`;
+          : `<button class="btn primario grande" id="instalarAgora"><i class="ph ph-download-simple"></i> ${estadoInst.erro ? "Tentar de novo" : naWeb ? "Baixar" : "Instalar"}</button>`;
     } else if (atual === "pronto") {
       direita = `<button class="btn primario grande" id="concluir">Abrir o Reuniões</button>`;
     } else {
       direita = `<button class="btn primario grande" data-nav="prox">${atual === "boasvindas" ? "Começar" : "Próximo"}</button>`;
     }
     const voltar = passo > 0 && atual !== "pronto" && !instalando && !instalado ? `<button class="btn grande" data-nav="ant">Voltar</button>` : "";
-    const log = atual === "instalar" && estadoInst.erro ? `<button class="btn grande" id="verLog">Ver registro</button>` : "";
+    const log = atual === "instalar" && estadoInst.erro && !naWeb ? `<button class="btn grande" id="verLog">Ver registro</button>` : "";
     rodape.innerHTML = `<span class="dica">Passo ${passo + 1} de ${lista.length}</span><div class="acoes">${log}${voltar}${direita}</div>`;
   } else {
     rodape.innerHTML = sujo
@@ -394,6 +396,7 @@ function lerTudo() {
 }
 
 function validar(id) {
+  if (naWeb && id === "resumo" && cfg.resumo.ativo && !cfg.temToken && !tokenNovo) return "Cole a chave da API da Anthropic ou desligue o resumo.";
   if (id === "pastas" && (!cfg.pastaGravacoes || !cfg.pastaMotor)) return "Escolha as duas pastas.";
   if (id === "transcricao" && cfg.separarVozes && !cfg.temToken && !tokenNovo) return "Cole o token do Hugging Face ou desligue “Separar as vozes”.";
   if (id === "resumo" && cfg.resumo.ativo && !cfg.resumo.nome) return "Escreva seu nome para a IA saber quem é você na reunião.";
@@ -416,6 +419,7 @@ ligarInterruptores(conteudo, (id, v) => {
   if (id === "separarVozes") { $("#vozes").hidden = !v; }
   if (id === "resumoAtivo") { $("#resumoCampos").hidden = !v; }
   if (id === "usarGpu" || id === "separarVozes") { cfg[id] = v; atualizarTamanho(); }
+  if (naWeb && id === "usarGpu") atualizarOpcoesWeb();
   marcarSujo();
 });
 
@@ -457,6 +461,15 @@ conteudo.addEventListener("click", async (e) => {
     return;
   }
   if (t.closest("#checarClaude")) { sis = await chamar("sistema"); desenharSecao("resumo"); return; }
+  if (t.closest("#permitirMic")) {
+    try { dev = await chamar("pedirMicrofone"); lAudioWeb(); desenharSecao("audio"); } catch { avisar("O navegador não liberou o microfone. Veja o cadeado na barra de endereço."); }
+    return;
+  }
+  if (t.closest("#apagarTudo")) {
+    const b = t.closest("#apagarTudo");
+    if (!b.dataset.certeza) { b.dataset.certeza = "1"; b.innerHTML = `<i class="ph ph-warning"></i> Clique de novo para apagar tudo`; setTimeout(() => desenharSecao("dados"), 4000); return; }
+    await chamar("apagarTudo"); avisar("Tudo apagado deste navegador."); desenharSecao("dados"); return;
+  }
   if (t.closest("#instalarAgora")) {
     if (!SETUP && sujo && !(await salvar())) return;
     return instalar();
@@ -494,7 +507,7 @@ rodape.addEventListener("click", async (e) => {
   } else if (t.closest("#salvar")) {
     if (await salvar()) {
       sujo = false; desenharRodape(); desenharSecao("motor");
-      avisar(pendentes.length ? "Salvo. O motor precisa instalar coisas novas: veja em Motor." : "Configurações salvas.");
+      avisar(pendentes.length ? (naWeb ? "Salvo. O modelo novo precisa ser baixado: veja em Modelo." : "Salvo. O motor precisa instalar coisas novas: veja em Motor.") : "Configurações salvas.");
       if (pendentes.length) irPara("motor");
     }
   } else if (t.closest("#descartar")) {
@@ -540,10 +553,216 @@ addEventListener("keydown", (e) => { if (e.key === "Escape" && !SETUP && !e.defa
 
 addEventListener("beforeunload", (e) => { if (sujo || instalando) e.preventDefault(); });
 
+// ---------------------------------------------------------------- versão web (roda inteira no navegador)
+
+let M = null, tamanhos = {};
+const SECOES_WEB = [
+  { id: "boasvindas", titulo: "Boas-vindas", icone: "hand-waving", so: "setup", render: rBoasVindasWeb },
+  { id: "transcricao", titulo: "Transcrição", icone: "text-align-left", render: rTranscricaoWeb, ler: lTranscricaoWeb },
+  { id: "audio", titulo: "Áudio", icone: "microphone", render: rAudioWeb, ler: lAudioWeb },
+  { id: "resumo", titulo: "Resumo com IA", icone: "sparkle", render: rResumoWeb, ler: lResumoWeb },
+  { id: "instalar", titulo: "Modelo", icone: "download-simple", so: "setup", render: rInstalarWeb },
+  { id: "pronto", titulo: "Pronto", icone: "check", so: "setup", render: rProntoWeb },
+  { id: "motor", titulo: "Modelo", icone: "cpu", so: "config", render: rMotorWeb },
+  { id: "dados", titulo: "Armazenamento", icone: "hard-drives", so: "config", render: rDadosWeb },
+  { id: "sobre", titulo: "Sobre", icone: "info", so: "config", render: rSobreWeb },
+];
+
+async function prepararWeb() {
+  M = await import("./web/motor.js");
+  // tamanho do download de cada qualidade, com e sem placa de vídeo
+  for (const q of M.QUALIDADES) for (const g of [true, false]) tamanhos[`${q.id}|${g}`] = (await M.plano({ modelo: q.id, usarGpu: g })).gb;
+  if (SETUP && !sis.webgpu) cfg.usarGpu = false;
+  if (!M.QUALIDADES.some((q) => q.id === cfg.modelo) || (!podeMaxima() && cfg.modelo === "whisper-large-v3-turbo")) cfg.modelo = "whisper-small";
+}
+const podeMaxima = () => sis.webgpu && sis.f16 && cfg.usarGpu;
+// ligar/desligar a placa de vídeo muda o tamanho de cada qualidade e se a Máxima está disponível
+function atualizarOpcoesWeb() {
+  if (!podeMaxima() && cfg.modelo === "whisper-large-v3-turbo") {
+    cfg.modelo = "whisper-small";
+    document.querySelectorAll(".opcao").forEach((o) => o.setAttribute("aria-checked", String(o.dataset.modelo === cfg.modelo)));
+  }
+  for (const q of M.QUALIDADES) {
+    const off = q.soGpu && !podeMaxima();
+    const b = document.querySelector(`.opcao[data-modelo="${q.id}"]`);
+    if (b) b.disabled = off;
+    const s = document.querySelector(`[data-gb="${q.id}"]`);
+    if (s) s.textContent = off ? "Indisponível aqui" : gbTxt(tamanhoWeb(q.id, cfg.usarGpu));
+  }
+}
+const tamanhoWeb = (modelo, gpu) => tamanhos[`${modelo}|${!!(gpu && sis.webgpu)}`] || 0.3;
+const gbTxt = (gb) => (gb < 1 ? `${Math.round(gb * 1024)} MB` : `${gb.toFixed(1).replace(".", ",")} GB`);
+
+function rBoasVindasWeb() {
+  return `
+    <h1>Bem-vindo ao Reuniões</h1>
+    <p class="lead">Grava suas reuniões, transcreve e diz o que ficou para você fazer. Tudo aqui no navegador, sem instalar nada.</p>
+    <ul class="recursos">
+      <li><i class="ph ph-waveform"></i><div><b>Sua voz e a dos outros em faixas separadas</b><span>Grava o microfone e o som da aba da reunião ao mesmo tempo.</span></div></li>
+      <li><i class="ph ph-lock-simple"></i><div><b>Transcrição no seu computador</b><span>A IA de transcrição roda dentro do navegador. O áudio não vai para nenhum servidor.</span></div></li>
+      <li><i class="ph ph-upload-simple"></i><div><b>Também transcreve arquivos</b><span>Arraste um áudio ou vídeo que você já tenha para a lista.</span></div></li>
+      <li><i class="ph ph-sparkle"></i><div><b>Resumo com o que é seu</b><span>Opcional: o Claude lê a transcrição e lista as suas tarefas, com o trecho que comprova cada uma.</span></div></li>
+    </ul>
+    ${sis.gravaTela ? "" : `<div class="guia">Este navegador não grava o som de outras abas. Para gravar reuniões use o Chrome ou o Edge no computador. Importar arquivos funciona.</div>`}
+    <p class="credito">Feito por Vinícius Vieira <span aria-hidden="true">·</span> <a data-link="${GITHUB}">github.com/viniiivs</a></p>`;
+}
+
+function rTranscricaoWeb() {
+  const recomendada = sis.webgpu ? "whisper-small" : "whisper-base";
+  return `
+    <h2>Transcrição</h2>
+    <p class="lead">${sis.webgpu
+      ? `O navegador tem acesso à placa de vídeo${sis.gpuNome ? ` (${esc(sis.gpuNome)})` : ""}. A transcrição vai ser rápida.`
+      : "O navegador não liberou a placa de vídeo (WebGPU). A transcrição vai usar o processador: funciona, mas demora mais."}</p>
+    <div class="pilha">
+      <label class="campo"><span>Idioma das reuniões</span>
+        <select id="idioma">${IDIOMAS.map(([v, n]) => `<option value="${v}" ${cfg.idioma === v ? "selected" : ""}>${n}</option>`).join("")}</select>
+      </label>
+      <div class="campo"><span>Qualidade</span>
+        <div class="opcoes" role="radiogroup" aria-label="Qualidade">
+          ${M.QUALIDADES.map((q) => {
+            const off = q.soGpu && !podeMaxima();
+            return `
+            <button type="button" class="opcao" role="radio" data-modelo="${q.id}" aria-checked="${cfg.modelo === q.id}" ${off ? "disabled" : ""}>
+              ${q.id === recomendada ? `<span class="selo">Recomendada</span>` : ""}
+              <b>${q.nome}</b><small>${q.desc}</small><small data-gb="${q.id}">${off ? "Indisponível aqui" : gbTxt(tamanhoWeb(q.id, cfg.usarGpu))}</small>
+            </button>`;
+          }).join("")}
+        </div>
+      </div>
+      ${interruptor("usarGpu", sis.webgpu && cfg.usarGpu, "Usar a placa de vídeo", sis.webgpu ? "Bem mais rápido. Desligue só se der problema." : "Este navegador não liberou o WebGPU.", !sis.webgpu)}
+    </div>`;
+}
+function lTranscricaoWeb() {
+  cfg.idioma = $("#idioma").value;
+  cfg.modelo = document.querySelector(".opcao[aria-checked=true]")?.dataset.modelo || cfg.modelo;
+  cfg.usarGpu = ligado("usarGpu");
+}
+
+function rAudioWeb() {
+  return `
+    <h2>Áudio</h2>
+    <p class="lead">Grava duas faixas: o seu microfone e o som da reunião, que o navegador pega da aba ou da tela que você compartilhar.</p>
+    <div class="pilha">
+      <label class="campo"><span>Microfone</span>
+        <select id="mic">
+          <option value="">Padrão do sistema</option>
+          ${dev.mics.map((d) => `<option value="${esc(d.id)}" ${cfg.mic === d.id ? "selected" : ""}>${esc(d.nome)}</option>`).join("")}
+        </select>
+        <small>A sua voz.${dev.semNomes ? ` <button type="button" class="link-ext" id="permitirMic">Permitir o microfone para ver os nomes</button>` : ""}</small>
+      </label>
+    </div>
+    <div class="guia">Ao clicar em <b>Gravar</b>, o navegador pergunta o que compartilhar:
+        <ol>
+          <li>Reunião no navegador: escolha a <b>aba</b> da reunião e deixe marcado <b>Compartilhar áudio da guia</b>.</li>
+          <li>Reunião num app instalado: escolha <b>Tela inteira</b> e marque <b>Compartilhar áudio do sistema</b> (só no Windows e no ChromeOS).</li>
+        </ol>
+        Só o som é gravado; a imagem é descartada. Deixe a aba do Reuniões aberta até parar.
+      </div>`;
+}
+function lAudioWeb() { const m = $("#mic"); if (m) cfg.mic = m.value || null; }
+
+function rResumoWeb() {
+  const r = cfg.resumo;
+  return `
+    <h2>Resumo com IA</h2>
+    <p class="lead">Opcional. Depois de transcrever, o Claude lê o texto e diz se você precisa fazer alguma coisa.</p>
+    <div class="pilha">
+      ${interruptor("resumoAtivo", r.ativo, "Resumir as reuniões", "Só o texto da transcrição vai para o Claude. O áudio fica no navegador.")}
+      <div class="revela" id="resumoCampos" ${r.ativo ? "" : "hidden"}>
+        <div class="guia">Usa a API da Anthropic com a sua chave (cobrança por uso, centavos por reunião).
+          Crie uma em <button class="link-ext" data-link="https://console.anthropic.com/settings/keys">console.anthropic.com</button> e cole abaixo. Ela fica só neste navegador.</div>
+        <label class="campo"><span>Chave da API</span>
+          <div class="pasta"><input id="token" type="password" autocomplete="off" spellcheck="false" placeholder="${cfg.temToken ? "Chave salva. Cole outra para trocar." : "sk-ant-..."}">
+            <button type="button" class="btn" id="testarToken">Testar</button></div>
+          <div class="status-linha" id="tokenStatus" aria-live="polite">${cfg.temToken ? `<i class="ph ph-check"></i> Chave salva neste navegador.` : ""}</div>
+        </label>
+        <label class="campo"><span>Seu nome</span><input id="rNome" value="${esc(r.nome)}" placeholder="Como você se apresenta"></label>
+        <label class="campo"><span>Como te chamam <small>(opcional)</small></span><input id="rApelidos" value="${esc(r.apelidos)}" placeholder="Apelidos, separados por vírgula"></label>
+        <label class="campo"><span>Sobre o seu trabalho <small>(opcional)</small></span>
+          <textarea id="rContexto" placeholder="Cargo, equipe, projetos, quem são seus chefes. Ajuda a IA a entender o que é com você.">${esc(r.contexto)}</textarea></label>
+      </div>
+    </div>`;
+}
+function lResumoWeb() {
+  lResumo();
+  const k = $("#token")?.value.trim();
+  if (k) tokenNovo = k;
+}
+
+function rInstalarWeb() {
+  const q = M.QUALIDADES.find((x) => x.id === cfg.modelo);
+  return `
+    <h2>Baixar o modelo de transcrição</h2>
+    <p class="lead">O modelo fica guardado neste navegador: baixa uma vez só e depois funciona até sem internet.</p>
+    <dl class="resumo-inst">
+      <dt>Download</dt><dd>cerca de ${gbTxt(tamanhoTotal())}</dd>
+      <dt>Qualidade</dt><dd>${q?.nome}${cfg.usarGpu && sis.webgpu ? ", na placa de vídeo" : ", no processador"}</dd>
+      <dt>Idioma</dt><dd>${esc(IDIOMAS.find(([v]) => v === cfg.idioma)?.[1] || cfg.idioma)}</dd>
+    </dl>
+    <div id="instalacao">${etapasHtml()}</div>`;
+}
+
+function rProntoWeb() {
+  return `
+    <i class="ph ph-check-circle grande-ok" aria-hidden="true"></i>
+    <h1>Tudo pronto</h1>
+    <p class="lead">Para gravar, clique em Gravar e escolha a aba da reunião. Também dá para arrastar um arquivo de áudio para a lista. A transcrição começa sozinha quando a gravação termina.</p>`;
+}
+
+function rMotorWeb() {
+  const q = M.QUALIDADES.find((x) => x.id === cfg.modelo)?.nome || cfg.modelo;
+  return `
+    <h2>Modelo de transcrição</h2>
+    <p class="lead">${pendentes.length ? "O modelo escolhido ainda não foi baixado neste navegador." : "Baixado e pronto para usar, até sem internet."}</p>
+    <div class="pilha">
+      <div class="info"><span>Qualidade</span><b>${esc(q)}, ${cfg.usarGpu && sis.webgpu ? "na placa de vídeo" : "no processador"}</b></div>
+      <div class="info"><span>Idioma</span><b>${esc(IDIOMAS.find(([v]) => v === cfg.idioma)?.[1] || cfg.idioma)}</b></div>
+      <div class="info"><span>Tamanho</span><b>${gbTxt(tamanhoTotal())}</b></div>
+    </div>
+    <div id="instalacao">${pendentes.length ? etapasHtml() : ""}</div>
+    ${pendentes.length ? `<div class="botoes"><button class="btn primario" id="instalarAgora"><i class="ph ph-download-simple"></i> Baixar agora</button></div>` : ""}`;
+}
+
+function rDadosWeb() {
+  setTimeout(async () => {
+    const a = await chamar("armazenamento").catch(() => null);
+    const el = $("#armUso");
+    if (!a || !el) return;
+    const gb = (b) => gbTxt(b / 1073741824);
+    el.innerHTML = `<div class="info"><span>Usado</span><b>${gb(a.usado)}${a.cota ? ` de ${gb(a.cota)} disponíveis` : ""}</b></div>
+      <div class="info"><span>Protegido contra limpeza automática</span><b>${a.persistente ? "Sim" : "Não"}</b></div>`;
+  });
+  return `
+    <h2>Armazenamento</h2>
+    <p class="lead">Gravações, transcrições e o modelo ficam só neste navegador, neste computador. Limpar os dados do site apaga tudo: baixe o que quiser guardar.</p>
+    <div class="pilha" id="armUso"><div class="info"><span>Calculando...</span></div></div>
+    <div class="botoes"><button class="btn perigo-hover" id="apagarTudo"><i class="ph ph-trash"></i> Apagar tudo deste navegador</button></div>`;
+}
+
+function rSobreWeb() {
+  const comp = [["Whisper", "https://github.com/openai/whisper"], ["Transformers.js", "https://github.com/huggingface/transformers.js"], ["ONNX Runtime Web", "https://onnxruntime.ai"],
+    ["Phosphor Icons", "https://phosphoricons.com"], ["Inter", "https://rsms.me/inter/"]];
+  return `
+    <h2>Sobre</h2>
+    <p class="lead">Grava, transcreve e resume reuniões dentro do navegador.</p>
+    <div class="pilha">
+      <div class="info"><span>Versão</span><b>${esc(sis.versao)}</b></div>
+      <div class="info"><span>Feito por</span><b>Vinícius Vieira · <button class="link-ext" data-link="${GITHUB}">github.com/viniiivs</button></b></div>
+      <div class="info"><span>Código aberto</span><b><button class="link-ext" data-link="${REPO}">github.com/viniiivs/reunioes</button> · licença MIT</b></div>
+      <div class="info"><span>App para Windows</span><b><button class="link-ext" data-link="${REPO}/releases/latest">Baixar</button> · grava sozinho e separa as vozes</b></div>
+    </div>
+    <h3>Privacidade</h3>
+    <p class="nota">Gravação e transcrição acontecem no seu navegador. Nada vai para servidor: só o download do modelo e, se você ligar o resumo, o texto da transcrição enviado à API da Anthropic com a sua chave.</p>
+    <h3>Feito com</h3>
+    <p class="nota">${comp.map(([n, u], i) => `<span class="junto"><button class="link-ext" data-link="${u}">${n}</button>${i < comp.length - 1 ? "," : "."}</span>`).join(" ")}</p>`;
+}
+
 // ---------------------------------------------------------------- inicio
 
 [cfg, sis, dev] = await Promise.all([chamar("config"), chamar("sistema"), chamar("dispositivos")]);
-if (SETUP && !sis.nvidia) { cfg.usarGpu = false; if (cfg.modelo === "large-v3") cfg.modelo = "small"; }
+if (naWeb) await prepararWeb();
+else if (SETUP && !sis.nvidia) { cfg.usarGpu = false; if (cfg.modelo === "large-v3") cfg.modelo = "small"; }
 if (!SETUP) {
   pendentes = await chamar("pendentes");
   const e = await chamar("estado").catch(() => null);

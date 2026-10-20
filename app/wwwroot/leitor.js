@@ -1,4 +1,4 @@
-import { chamar, aoMudar } from "./ponte.js";
+import { chamar, aoMudar, naWeb } from "./ponte.js";
 import * as f from "./fmt.js";
 
 const $ = (s) => document.querySelector(s);
@@ -95,7 +95,7 @@ function desenharResumo() {
   if (!resumo && !resumoAtivo) {
     painelResumo.innerHTML = `
       <div class="vazio"><h2>Resumo com IA desligado</h2>
-        <p>Ligue em Configurações, na seção Resumo com IA. O Claude lê a transcrição e diz se ficou alguma tarefa para você.</p></div>`;
+        <p>Ligue em Configurações, na seção Resumo com IA${naWeb ? " (precisa de uma chave da API da Anthropic)" : ""}. O Claude lê a transcrição e diz se ficou alguma tarefa para você.</p></div>`;
     return;
   }
   if (!resumo) {
@@ -227,7 +227,15 @@ $("#copiar").addEventListener("click", async () => {
   catch (e) { avisar(e.message); }
 });
 $("#abrir").addEventListener("click", () => chamar("abrirArquivo", { base, ext: "transcricao.md" }).catch((e) => avisar(e.message)));
-$("#pasta").addEventListener("click", () => chamar("pasta", { base }).catch((e) => avisar(e.message)));
+$("#pasta").addEventListener("click", () => chamar(naWeb ? "baixar" : "pasta", { base }).catch((e) => avisar(e.message)));
+if (naWeb) {
+  // no navegador não há pasta nem editor: os dois botões baixam
+  const p = $("#pasta"), a = $("#abrir");
+  p.title = "Baixar o áudio e a transcrição"; p.setAttribute("aria-label", p.title);
+  p.querySelector("i").className = "ph ph-download-simple";
+  a.title = "Baixar a transcrição (.md)"; a.setAttribute("aria-label", a.title);
+  a.querySelector("i").className = "ph ph-file-arrow-down";
+}
 
 document.addEventListener("keydown", (e) => {
   if (e.ctrlKey && e.key.toLowerCase() === "f") { e.preventDefault(); abrirAba("texto"); $("#procura").focus(); $("#procura").select(); }

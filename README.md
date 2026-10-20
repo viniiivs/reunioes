@@ -4,6 +4,8 @@ Grava suas reuniões, transcreve no seu próprio computador e diz o que ficou pa
 
 **[⬇ Baixar para Windows](https://github.com/viniiivs/reunioes/releases/latest/download/Reunioes-win-Setup.exe)** · Windows 10 e 11, 64 bits
 
+**[🌐 Usar no navegador](https://viniiivs.github.io/reunioes/)** · sem instalar, no Chrome ou no Edge
+
 ![Lista de reuniões](docs/lista.png)
 
 ## O que faz
@@ -37,6 +39,18 @@ Grava suas reuniões, transcreve no seu próprio computador e diz o que ficou pa
 | Separar vozes | opcional; precisa de uma conta grátis no [Hugging Face](https://huggingface.co) e aceitar os termos do modelo [pyannote community-1](https://huggingface.co/pyannote/speaker-diarization-community-1). O assistente explica |
 | Resumo com IA | opcional; precisa do [Claude Code](https://claude.com/product/claude-code) instalado e com login |
 
+## Versão web
+
+Em **[viniiivs.github.io/reunioes](https://viniiivs.github.io/reunioes/)**, com as mesmas telas do app, sem instalar nada:
+
+- **Grava duas faixas**: o seu microfone e o som da aba (ou da tela) da reunião que você compartilhar. Marque "Compartilhar áudio" quando o navegador perguntar.
+- **Transcreve no navegador** com o Whisper ([Transformers.js](https://github.com/huggingface/transformers.js)), pela placa de vídeo (WebGPU) quando dá, ou pelo processador. O modelo é baixado uma vez (de 70 MB a 1,5 GB, conforme a qualidade) e o áudio não sai do computador.
+- **Importa arquivos**: arraste um áudio ou vídeo para a lista.
+- **Resumo com IA** (opcional) com a sua chave da API da Anthropic, guardada só no navegador.
+- Gravações e transcrições ficam no próprio navegador; baixe o que quiser guardar.
+- Funciona offline depois do primeiro uso e pode ser instalada como app (ícone na barra de endereço).
+
+O que só o app de Windows faz: gravar sozinho quando a reunião começa, atalho global e separar as vozes de cada pessoa.
 ## Privacidade
 
 Gravação e transcrição acontecem no seu computador. Só sai daqui:
@@ -57,9 +71,12 @@ dotnet run --project app
 
 # gerar o instalador (build\releases) e publicar uma versão nova
 .\build\publicar.ps1 -Versao 1.0.7 -Publicar
+
+# montar a versão web (build\web) e publicar no GitHub Pages
+.\build\web.ps1 -Publicar
 ```
 
-O app é .NET 8 (WinForms + WebView2) com a interface em HTML/CSS/JS (`app/wwwroot`). O motor é Python (`app/motor`), instalado pelo próprio app com o [uv](https://github.com/astral-sh/uv). Instalador e atualizações: [Velopack](https://velopack.io). Comparação dos estilos visuais em `prototipos/` (`py prototipos\servir.py`).
+O app é .NET 8 (WinForms + WebView2) com a interface em HTML/CSS/JS (`app/wwwroot`). O motor é Python (`app/motor`), instalado pelo próprio app com o [uv](https://github.com/astral-sh/uv). Instalador e atualizações: [Velopack](https://velopack.io). A versão web usa as mesmas telas com o motor em `web/` (IndexedDB, MediaRecorder e Whisper via Transformers.js). Comparação dos estilos visuais em `prototipos/` (`py prototipos\servir.py`).
 
 ## Créditos
 
