@@ -2,24 +2,40 @@
 
 Grava suas reuniões, transcreve no seu próprio computador e diz o que ficou para você fazer.
 
-**[Baixar para Windows](https://github.com/viniiivs/reunioes/releases/latest/download/Reunioes-win-Setup.exe)** (Windows 10 e 11, 64 bits)
+**[⬇ Baixar para Windows](https://github.com/viniiivs/reunioes/releases/latest/download/Reunioes-win-Setup.exe)** · Windows 10 e 11, 64 bits
+
+![Lista de reuniões](docs/lista.png)
 
 ## O que faz
 
 - **Grava duas faixas separadas**: o seu microfone e o som do computador (a voz dos outros), sem perda de qualidade.
-- **Grava sozinho quando a reunião começa**: percebe quando um app de chamada (Teams, Meet, Discord, Zoom, Slack, Webex...) usa o microfone, e para quando ele solta.
-- **Atalho global** para gravar e parar, mesmo com o app fechado.
-- **Transcreve no seu computador** com WhisperX. O áudio nunca sai da sua máquina. Com placa de vídeo NVIDIA, uma reunião de 30 minutos fica pronta em poucos minutos.
-- **Separa as vozes** de cada pessoa (opcional) e aprende os nomes: dê nome a "Falante 1" uma vez e ele reconhece nas próximas.
+- **Grava sozinho quando a reunião começa**: percebe quando um app de chamada (Teams, Meet, Discord, Zoom, Slack, Webex...) usa o microfone, e para quando a chamada acaba. Mutar o microfone não interrompe.
+- **Atalho global** para gravar e parar, mesmo com o app fechado (padrão: Ctrl + Alt + G).
+- **Transcreve no seu computador** com WhisperX. O áudio nunca sai da sua máquina. Com placa de vídeo NVIDIA, uma reunião de 30 minutos fica pronta em poucos minutos; sem ela, funciona pelo processador (mais devagar).
+- **Separa as vozes** de cada pessoa (opcional) e aprende os nomes: dê nome a "Falante 1" uma vez e ele reconhece nas próximas reuniões.
 - **Resumo com IA** (opcional, com o [Claude Code](https://claude.com/product/claude-code)): lista as tarefas que são suas, com o trecho da reunião que comprova cada uma.
 - **Atualiza sozinho**: baixa versões novas em segundo plano e avisa quando é só reiniciar.
 
+![Resumo de uma reunião](docs/resumo.png)
+
 ## Instalação
 
-1. Baixe e abra o `Reunioes-win-Setup.exe`. Não precisa de administrador.
-2. Na primeira vez, um assistente configura tudo: pastas, qualidade da transcrição, microfone e saída de som, e baixa o motor de transcrição (de 2 a 8 GB, conforme a qualidade escolhida).
+1. Baixe o **[Reunioes-win-Setup.exe](https://github.com/viniiivs/reunioes/releases/latest/download/Reunioes-win-Setup.exe)** e abra. Não precisa de administrador.
+2. Na primeira vez o Windows pode mostrar **"O Windows protegeu o computador"** (o instalador não tem assinatura digital paga). Clique em **Mais informações** e depois em **Executar assim mesmo**.
+3. Um assistente configura tudo: pastas, qualidade da transcrição, microfone e saída de som, gravação automática, e baixa o motor de transcrição.
 
-Para separar as vozes, o assistente explica como criar um token gratuito no Hugging Face (o modelo [pyannote community-1](https://huggingface.co/pyannote/speaker-diarization-community-1) pede que cada pessoa aceite os termos de uso).
+![Assistente de configuração](docs/assistente.png)
+
+### Do que precisa
+
+| | |
+|---|---|
+| Sistema | Windows 10 ou 11, 64 bits |
+| Espaço | de 3 GB (sem placa de vídeo, qualidade rápida) a 8 GB (placa NVIDIA, qualidade máxima), na pasta que você escolher |
+| Internet | só para instalar e para as atualizações; gravar e transcrever funcionam offline |
+| Placa de vídeo NVIDIA | opcional, deixa a transcrição muito mais rápida |
+| Separar vozes | opcional; precisa de uma conta grátis no [Hugging Face](https://huggingface.co) e aceitar os termos do modelo [pyannote community-1](https://huggingface.co/pyannote/speaker-diarization-community-1). O assistente explica |
+| Resumo com IA | opcional; precisa do [Claude Code](https://claude.com/product/claude-code) instalado e com login |
 
 ## Privacidade
 
@@ -29,6 +45,10 @@ Gravação e transcrição acontecem no seu computador. Só sai daqui:
 
 Grave reuniões só com o conhecimento das pessoas e respeitando as leis do seu país.
 
+## Desinstalar
+
+Pelo Windows, em **Configurações > Aplicativos > Reuniões > Desinstalar**. O motor de transcrição e as configurações são apagados; **as gravações ficam** na pasta que você escolheu.
+
 ## Para desenvolvedores
 
 ```powershell
@@ -36,15 +56,15 @@ Grave reuniões só com o conhecimento das pessoas e respeitando as leis do seu 
 dotnet run --project app
 
 # gerar o instalador (build\releases) e publicar uma versão nova
-.\build\publicar.ps1 -Versao 1.0.1 -Publicar
+.\build\publicar.ps1 -Versao 1.0.7 -Publicar
 ```
 
-O app é .NET 8 (WinForms + WebView2) com a interface em HTML/CSS/JS (`app/wwwroot`). O motor é Python (`app/motor`), instalado pelo próprio app com o [uv](https://github.com/astral-sh/uv). Instalador e atualizações: [Velopack](https://velopack.io).
+O app é .NET 8 (WinForms + WebView2) com a interface em HTML/CSS/JS (`app/wwwroot`). O motor é Python (`app/motor`), instalado pelo próprio app com o [uv](https://github.com/astral-sh/uv). Instalador e atualizações: [Velopack](https://velopack.io). Comparação dos estilos visuais em `prototipos/` (`py prototipos\servir.py`).
 
 ## Créditos
 
 Feito por **Vinícius Vieira** ([github.com/viniiivs](https://github.com/viniiivs)).
 
-Usa [WhisperX](https://github.com/m-bain/whisperX), [faster-whisper](https://github.com/SYSTRAN/faster-whisper), [pyannote.audio](https://github.com/pyannote/pyannote-audio), [PyTorch](https://pytorch.org), [uv](https://github.com/astral-sh/uv), [Velopack](https://velopack.io), [NAudio](https://github.com/naudio/NAudio) e [Phosphor Icons](https://phosphoricons.com).
+Usa [WhisperX](https://github.com/m-bain/whisperX), [faster-whisper](https://github.com/SYSTRAN/faster-whisper), [pyannote.audio](https://github.com/pyannote/pyannote-audio), [PyTorch](https://pytorch.org), [uv](https://github.com/astral-sh/uv), [Velopack](https://velopack.io), [NAudio](https://github.com/naudio/NAudio), [Phosphor Icons](https://phosphoricons.com) e a fonte [Inter](https://rsms.me/inter/).
 
 Licença MIT.
