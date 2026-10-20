@@ -1,0 +1,52 @@
+/* Liquid Glass (aproximação web) por cima do tema Apple. O liquid-glass.js põe a refração no
+   backdrop-filter de cada peça; aqui ficam a transparência, o brilho especular e a barra flutuante. */
+
+/* a barra passa a flutuar sobre a lista: as linhas rolam por baixo e a refração aparece */
+body:has(.lista) .topo { position: absolute; inset: 8px 12px auto 12px; z-index: 5; border-radius: 22px; height: 52px; }
+body:has(.lista) .faixa:not([hidden]) { position: absolute; inset: 66px 12px auto 12px; z-index: 5; border-radius: 16px; }
+body:has(.lista) .lista { padding-top: 70px; }
+body:has(.lista) .cabecalho { position: relative; top: auto; }
+
+.vidro-liquido {
+  background: rgba(255, 255, 255, 0.10) !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.75),            /* luz batendo na borda de cima */
+    inset 0 -1px 0 rgba(255, 255, 255, 0.18),
+    inset 1px 0 0 rgba(255, 255, 255, 0.3), inset -1px 0 0 rgba(255, 255, 255, 0.3),
+    inset 0 0 0 0.5px rgba(255, 255, 255, 0.35),
+    0 10px 30px rgba(0, 0, 0, 0.16), 0 1px 3px rgba(0, 0, 0, 0.1) !important;
+  border: 0 !important;
+}
+@media (prefers-color-scheme: dark) {
+  .vidro-liquido {
+    background: rgba(40, 40, 44, 0.18) !important;
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.35), inset 0 -1px 0 rgba(255, 255, 255, 0.08),
+      inset 1px 0 0 rgba(255, 255, 255, 0.14), inset -1px 0 0 rgba(255, 255, 255, 0.14),
+      inset 0 0 0 0.5px rgba(255, 255, 255, 0.18),
+      0 10px 30px rgba(0, 0, 0, 0.45), 0 1px 3px rgba(0, 0, 0, 0.3) !important;
+  }
+}
+
+/* botões e switch viram lentes pequenas */
+.gravar.vidro-liquido { color: var(--text); }
+.gravar.ativo.vidro-liquido { background: rgba(255, 59, 48, 0.78) !important; color: #fff; }
+.auto.vidro-liquido { border-radius: 999px; padding: 0 14px 0 6px; height: 38px; }
+.gravar.vidro-liquido { height: 38px; padding: 0 16px 0 12px; }
+
+/* switch: a bolinha vira lente de vidro enquanto você segura (como no iOS 26) */
+.sw i { transition: transform 160ms ease-out, background-color 160ms ease, box-shadow 160ms ease; }
+.interruptor:active .sw i, .auto:active .sw i {
+  background: rgba(255, 255, 255, 0.35); backdrop-filter: blur(1px) saturate(2);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.9), inset 0 0 0 0.5px rgba(255, 255, 255, 0.6), 0 4px 10px rgba(0, 0, 0, 0.25);
+  scale: 1.35 1.25;
+}
+
+dialog.vidro-liquido { background: rgba(255, 255, 255, 0.16) !important; }
+@media (prefers-color-scheme: dark) { dialog.vidro-liquido { background: rgba(30, 30, 32, 0.32) !important; } }
+dialog::backdrop { background: rgba(0, 0, 0, 0.12); }
+.aviso.vidro-liquido { color: var(--text); }
+
+@media (prefers-reduced-transparency: reduce) {
+  .vidro-liquido { backdrop-filter: none !important; background: var(--surface) !important; }
+}

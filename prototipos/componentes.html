@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Reuniões, componentes Apple</title>
+<style>
+  html, body { margin: 0; height: 100%; background: #111; color: #ddd; font: 13px system-ui, sans-serif; }
+  body { display: flex; flex-direction: column; }
+  .controles { display: flex; gap: 18px; align-items: center; justify-content: center; padding: 9px; flex: none; }
+  .grupo { display: flex; gap: 4px; align-items: center; }
+  .grupo span { color: #888; margin-right: 4px; }
+  button { border: 1px solid #444; background: transparent; color: #ddd; border-radius: 999px; padding: 4px 12px; cursor: pointer; font: inherit; }
+  button[aria-pressed="true"] { background: #fff; color: #111; border-color: #fff; }
+  iframe { flex: 1; width: 100%; border: 0; background: #fff; }
+</style>
+</head>
+<body>
+  <div class="controles">
+    <div class="grupo" id="estilo"><span>Estilo</span><button data-v="atual" aria-pressed="false">Atual</button><button data-v="apple" aria-pressed="false">Apple</button><button data-v="liquido" aria-pressed="false">Liquid Glass</button><button data-v="puppertino" aria-pressed="true">Puppertino</button></div>
+    <div class="grupo" id="tela"><span>Tela</span>
+      <button data-v="index.html?muitas" aria-pressed="true">Lista</button>
+      <button data-v="leitor.html?b=b&aba=resumo">Resumo</button>
+      <button data-v="leitor.html?b=b&aba=texto">Transcrição</button>
+      <button data-v="config.html">Configurações</button>
+      <button data-v="config.html?modo=setup">Assistente</button>
+    </div>
+  </div>
+  <iframe id="app" title="App Reuniões"></iframe>
+<script>
+// Carrega as telas REAIS do app (com os dados fictícios do modo navegador) e, no estilo Apple,
+// injeta tema-apple.css por cima. Navegações dentro do app reaplicam o tema.
+const app = document.getElementById("app");
+let estilo = "puppertino", tela = "index.html?muitas";
+function aplicar() {
+  const d = app.contentDocument;
+  if (!d) return;
+  // trocar de estilo recarrega a tela: o vidro mexe em estilos inline e filtros SVG
+  const css = (href) => { const l = d.createElement("link"); l.rel = "stylesheet"; l.href = href; d.head.append(l); };
+  if (estilo !== "atual") css("/prototipos/tema-apple.css");
+  if (estilo === "puppertino") {
+    css("/prototipos/vendor/puppertino/puppertino-desktop.min.css");
+    css("/prototipos/vendor/remixicon/remixicon.css");
+    css("/prototipos/puppertino-adapter.css");
+    const lente = d.createElement("script"); lente.src = "/prototipos/vendor/puppertino/liquid_glass.js"; d.body.append(lente);
+    lente.onload = () => { const s = d.createElement("script"); s.type = "module"; s.src = "/prototipos/puppertino-adapter.js"; d.body.append(s); };
+  }
+  if (estilo === "liquido") {
+    css("/prototipos/liquid-glass.css");
+    const s = d.createElement("script"); s.src = "/prototipos/liquid-glass.js"; d.body.append(s);
+  }
+  // o diálogo de excluir aparece sozinho na lista, para dar para ver o alerta
+}
+app.addEventListener("load", aplicar);
+function ir() { app.src = "/app/wwwroot/" + tela; }
+for (const [id, fn] of [["estilo", (v) => { estilo = v; ir(); }], ["tela", (v) => { tela = v; ir(); }]])
+  document.getElementById(id).addEventListener("click", (e) => {
+    const b = e.target.closest("button"); if (!b) return;
+    document.querySelectorAll(`#${id} button`).forEach((x) => x.setAttribute("aria-pressed", String(x === b)));
+    fn(b.dataset.v);
+  });
+ir();
+</script>
+</body>
+</html>

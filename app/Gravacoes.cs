@@ -316,7 +316,8 @@ public sealed class Gravacoes
         JsonNode? resumo = null;
         try { if (File.Exists(rj)) resumo = JsonNode.Parse(LerCompartilhado(rj)); }
         catch (Exception) { }   // resumo corrompido nao pode impedir de ler a transcricao
-        return new { texto = LerCompartilhado(md), gravacao = g, resumo, resumoAtivo = cfg().Resumo.Ativo };
+        var nome = cfg().Resumo.Nome?.Trim();
+        return new { texto = LerCompartilhado(md), gravacao = g, resumo, resumoAtivo = cfg().Resumo.Ativo, nome = string.IsNullOrEmpty(nome) ? null : nome };
     }
 
     ProcessStartInfo Py(string script, bool comToken)

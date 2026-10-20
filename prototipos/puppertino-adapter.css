@@ -1,0 +1,103 @@
+/* Ajustes do estilo Puppertino às telas do app. Os componentes vêm do Puppertino 2; aqui só o
+   encaixe no layout existente e as regras de comportamento que combinamos. */
+:root, body.puppertino, body.puppertino.p-auto-dark-mode {
+  --p-control-accent: #0a8f84 !important;   /* cor de destaque do app em todos os componentes */
+  --p-color-current: #0a8f84;
+  --font: "Inter", -apple-system, "SF Pro Text", system-ui, sans-serif;
+}
+@media (prefers-color-scheme: dark) { :root, body.puppertino, body.puppertino.p-auto-dark-mode { --p-control-accent: #2fb8a8 !important; --p-color-current: #2fb8a8; } }
+
+/* a tipografia do Puppertino (p-type) aumenta os h1/h2: as telas do app têm escala própria */
+body.puppertino .marca h1, body.puppertino .titulo h1 { font: 700 17px/1.2 var(--font) !important; letter-spacing: -0.02em; margin: 0; }
+body.puppertino .secao h1 { font-size: 26px !important; }
+body.puppertino .secao h2 { font-size: 20px !important; margin: 0 0 6px !important; }
+body.puppertino .p-search input { width: 100%; }
+.veredito.agir i, .acoes-lista i { color: #ff9f0a; }
+.estado.pronta i { color: #34c759; }
+.raio { color: var(--p-control-accent); }
+.veredito-topo i { color: var(--p-control-accent); }
+
+[class^="ri-"], [class*=" ri-"] { line-height: 1; font-size: 15px; display: inline-block; }
+
+/* ---- barra flutuante de vidro sobre a lista (refração: rizroze) ---- */
+body:has(.lista) .topo {
+  position: absolute; inset: 8px 12px auto 12px; z-index: 5; height: 52px; border-radius: 26px;
+  background: rgba(255, 255, 255, 0.12); box-shadow: inset 0 1px 0 rgba(255,255,255,0.7), inset 0 0 0 0.5px rgba(255,255,255,0.4), 0 10px 30px rgba(0,0,0,0.14);
+}
+@media (prefers-color-scheme: dark) { body:has(.lista) .topo { background: rgba(40,40,44,0.2); box-shadow: inset 0 1px 0 rgba(255,255,255,0.25), inset 0 0 0 0.5px rgba(255,255,255,0.14), 0 10px 30px rgba(0,0,0,0.45); } }
+body:has(.lista) .faixa:not([hidden]) { position: absolute; inset: 66px 12px auto 12px; z-index: 5; border-radius: 16px; }
+body:has(.lista) .lista { padding-top: 70px; }
+body:has(.lista) .cabecalho { position: relative; top: auto; }
+.ferramentas { gap: 10px; }
+.ferramentas .p-search { width: 220px; }
+.gravar.p-button { gap: 6px; }
+.gravar.p-button i { color: #ff3b30; font-size: 15px; }
+.gravar.ativo.p-button { background: #ff3b30; color: #fff; }
+.gravar.ativo.p-button i { color: #fff; }
+.auto { background: transparent !important; }
+.auto .p-switch { flex: none; }
+
+/* ---- lista: a linha inteira abre; ações só no hover (e no botão direito) ---- */
+.linha { cursor: default; }
+.acoes [data-acao="ler"] { display: none; }
+.acoes .p-button-icon-only { opacity: 0; transition: opacity 120ms ease; }
+.linha:hover .acoes .p-button-icon-only, .linha:focus-within .acoes .p-button-icon-only { opacity: 1; }
+.acoes [data-acao="cancelar"] { width: 22px; height: 22px; padding: 0; border-radius: 50%; min-width: 0 !important; font-size: 0; }
+.acoes [data-acao="cancelar"] i { font-size: 14px; }
+.acoes .p-button-default { min-width: 0 !important; }
+.estado .ri-loader-4-line { animation: gira 900ms linear infinite; }
+.p-menu { position: fixed; z-index: 100; min-width: 210px; }
+
+/* ---- leitor: segmentado do Puppertino no lugar das abas ---- */
+.p-seg-leitor { margin: 12px 20px 8px; width: 240px; }
+
+/* ---- Configurações: barra lateral do Puppertino com os quadrados coloridos do Ajustes ---- */
+.lateral.p-sidebar { padding-top: 20px; }
+.passo.p-sidebar-row { height: auto; min-height: 30px; }
+.passo .p-sidebar-icon {
+  width: 22px; height: 22px; border-radius: 6px; display: grid; place-items: center;
+  font-size: 13px; color: #fff; background: #8e8e93;
+  background-image: linear-gradient(rgba(255,255,255,0.18), rgba(255,255,255,0));
+}
+.passo[data-rolar="pastas"] .p-sidebar-icon { background-color: #0a84ff; }
+.passo[data-rolar="transcricao"] .p-sidebar-icon { background-color: #5e5ce6; }
+.passo[data-rolar="audio"] .p-sidebar-icon { background-color: #ff2d55; }
+.passo[data-rolar="extras"] .p-sidebar-icon { background-color: #ff3b30; }
+.passo[data-rolar="resumo"] .p-sidebar-icon { background-color: #ff9f0a; }
+.passo[data-rolar="motor"] .p-sidebar-icon { background-color: #30b0c7; }
+.passo[data-rolar="atualizacoes"] .p-sidebar-icon { background-color: #34c759; }
+/* macOS 27: seleção cinza sutil, o quadrado CONTINUA colorido e o texto continua escuro */
+.passo.p-selected, .passo[aria-current="true"] { color: inherit !important; background: var(--p-sidebar-selected, rgba(120,120,128,0.14)) !important; }
+.passo.p-selected .p-sidebar-icon { filter: none; }
+
+/* ---- alerta: o do macOS 27 (Puppertino), com o ícone do app no topo, como o NSAlert ---- */
+dialog.p-desktop-modal { padding: 0; border: 0; background: transparent; max-width: none; margin: 0; overflow: visible; }
+dialog.p-desktop-modal::before { display: none !important; }
+dialog.p-desktop-modal::backdrop { background: rgba(0, 0, 0, 0.12); }
+dialog.p-desktop-modal form { margin: 0; }
+.p-alerta-icone { display: block; width: 52px; height: 52px; margin: 0 auto 10px; }
+.p-desktop-modal__body { text-align: center; }
+/* a lente de vidro sobre a lista: lixeira e pasta em cinza, não na cor de destaque */
+.acoes .p-button-borderless { color: var(--p-label-secondary, rgba(60,60,67,0.6)); }
+@media (prefers-color-scheme: dark) { .acoes .p-button-borderless { color: rgba(235,235,245,0.6); } }
+/* ---- correções de escala e cor ---- */
+/* o Puppertino redefine a cor dentro de cada controle: força a do app em todos os níveis */
+body.puppertino, body.puppertino * { --p-control-accent: #0a8f84 !important; --p-color-current: #0a8f84; }
+@media (prefers-color-scheme: dark) { body.puppertino, body.puppertino * { --p-control-accent: #2fb8a8 !important; --p-color-current: #2fb8a8; } }
+body.puppertino .p-desktop-modal__title { font-size: 13px !important; font-weight: 700 !important; line-height: 16px !important; letter-spacing: 0 !important; margin: 0 !important; }
+body.puppertino .p-desktop-modal__description { font-size: 11px !important; line-height: 14px !important; margin: 6px 0 0 !important; }
+body.puppertino .resumo h2 { font-size: 14px !important; margin: 26px 0 8px !important; letter-spacing: 0 !important; }
+body.puppertino .passo .p-sidebar-icon { color: #fff !important; font-size: 13px !important; }
+body.puppertino .passo .p-sidebar-icon::before { color: #fff !important; }
+/* a refração não pode vazar pelos cantos arredondados */
+dialog.p-desktop-modal .p-desktop-modal__surface { clip-path: inset(0 round 26px); }
+body:has(.lista) .topo { clip-path: inset(0 round 26px); }
+
+/* o diálogo em si não pode ter fundo: quem desenha a superfície é o Puppertino */
+dialog.p-desktop-modal { backdrop-filter: none !important; -webkit-backdrop-filter: none !important; background: transparent !important; box-shadow: none !important; width: min(var(--p-desktop-modal-width, 260px), calc(100vw - 32px)) !important; }
+/* texto do corpo na escala do Mac (13 px), não na do iPhone (17 px) */
+body.puppertino.p-type { font-size: 13px; line-height: 1.45; }
+body.puppertino .resumo li, body.puppertino .acoes-lista b, body.puppertino .diz { font-size: 13.5px; }
+/* alerta quase opaco (legibilidade, como no macOS): a refração fica só na borda */
+dialog.p-desktop-modal .p-desktop-modal__surface { background: rgba(246, 246, 248, 0.86) !important; }
+@media (prefers-color-scheme: dark) { dialog.p-desktop-modal .p-desktop-modal__surface { background: rgba(44, 44, 48, 0.86) !important; } }

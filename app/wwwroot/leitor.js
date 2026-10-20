@@ -11,6 +11,8 @@ let pessoa = null;
 let resumo = null;
 let estadoResumo = null;
 let resumoAtivo = true;
+let nomeEu = null;   // nome da pessoa (Configurações > Resumo); só muda o que aparece, o arquivo segue com "Eu"
+const rotulo = (q) => (q === "Eu" && nomeEu ? nomeEu : q);
 
 // O mic mudo faz o Whisper inventar "Obrigado." / "Tchau." soltos no canal "Eu".
 const DUVIDOSA = /^(obrigad[oa]|tchau|valeu|e aí|legenda .*)[.!]*$/i;
@@ -45,6 +47,7 @@ async function carregar(primeira) {
     const r = await chamar("ler", { base });
     const g = r.gravacao;
     temVozes = !!g?.vozes;
+    nomeEu = r.nome || null;
     if (primeira) {
       falas = r.texto.split(/\r?\n/).map((l) => l.match(RE_FALA)).filter(Boolean)
         .map(([, tempo, quem, diz]) => ({ tempo, quem, diz, duvidosa: quem === "Eu" && DUVIDOSA.test(diz.trim()) }));
@@ -162,7 +165,7 @@ function pessoas() {
   if (conta.size < 2) { $("#pessoas").innerHTML = ""; return; }
   $("#pessoas").innerHTML = [...conta].sort((a, b) => b[1] - a[1]).map(([nome, n]) => {
     const renomeavel = temVozes && nome !== "Eu" && nome !== "Outros" && nome !== "Desconhecido";
-    return `<span class="pessoa-grupo"><button class="pessoa" aria-pressed="${nome === pessoa}" data-nome="${f.esc(nome)}" title="Mostrar só as falas de ${f.esc(nome)}">${f.esc(nome)} <b>${n}</b></button>${
+    return `<span class="pessoa-grupo"><button class="pessoa" aria-pressed="${nome === pessoa}" data-nome="${f.esc(nome)}" title="Mostrar só as falas de ${f.esc(rotulo(nome))}">${f.esc(rotulo(nome))} <b>${n}</b></button>${
       renomeavel ? `<button class="renomear" data-renomear="${f.esc(nome)}" title="Dar nome a esta voz (fica memorizada para as próximas reuniões)" aria-label="Renomear ${f.esc(nome)}"><i class="ph ph-pencil-simple"></i></button>` : ""}</span>`;
   }).join("");
 }
@@ -203,7 +206,7 @@ function desenhar() {
     anterior = x.quem;
     const diz = reEsc ? f.esc(x.diz).replace(reEsc, (m) => `<mark>${m}</mark>`) : f.esc(x.diz);
     html += `<p class="fala${nova ? " nova" : ""}${x.duvidosa ? " duvidosa" : ""}" data-tempo="${x.tempo}"${x.duvidosa ? ` title="Provável alucinação do Whisper com o microfone mudo"` : ""}>
-      <span class="tempo">${x.tempo}</span><span class="quem${x.quem === "Eu" ? " eu" : ""}">${f.esc(x.quem)}</span><span class="diz">${diz}</span></p>`;
+      <span class="tempo">${x.tempo}</span><span class="quem${x.quem === "Eu" ? " eu" : ""}">${f.esc(rotulo(x.quem))}</span><span class="diz">${diz}</span></p>`;
     n++;
   }
   area.innerHTML = n ? html : `<div class="vazio"><h2>Nada encontrado</h2><p>${falas.length ? "Nenhuma fala bate com o filtro." : "A transcrição está vazia."}</p></div>`;
@@ -219,7 +222,7 @@ $("#pessoas").addEventListener("click", (e) => {
 });
 
 $("#copiar").addEventListener("click", async () => {
-  const txt = falas.map((x) => `[${x.tempo}] ${x.quem}: ${x.diz}`).join("\n");
+  const txt = falas.map((x) => `[${x.tempo}] ${rotulo(x.quem)}: ${x.diz}`).join("\n");
   try { await chamar("copiar", { texto: txt }); avisar("Transcrição copiada."); }
   catch (e) { avisar(e.message); }
 });

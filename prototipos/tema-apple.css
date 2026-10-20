@@ -1,0 +1,207 @@
+/* Tema "Apple" para comparar: MESMO layout e mesmas telas do app, só os componentes mudam.
+   Linguagem do macOS atual (Liquid Glass): controles em cápsula, grupos de vidro na barra,
+   switch e segmentado nativos, listas e formulários agrupados (Ajustes do Sistema).
+   Inter faz o papel da SF Pro (que não pode ser distribuída). */
+@import url("https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,400..700&display=swap");
+
+:root {
+  --font: "Inter", -apple-system, "SF Pro Text", system-ui, sans-serif;
+  --font-display: "Inter", -apple-system, "SF Pro Display", system-ui, sans-serif;
+  --mono: "SF Mono", ui-monospace, "Cascadia Mono", monospace;
+  --bg: #f5f5f7;
+  --surface: #ffffff;
+  --surface-2: rgba(120, 120, 128, 0.12);       /* fill do sistema */
+  --hover: rgba(120, 120, 128, 0.08);
+  --line: rgba(60, 60, 67, 0.12);               /* separator */
+  --text: #1d1d1f;
+  --muted: rgba(60, 60, 67, 0.62);              /* secondaryLabel */
+  --faint: rgba(60, 60, 67, 0.36);              /* tertiaryLabel */
+  --accent: #0a8f84;
+  --accent-ink: #ffffff;
+  --accent-soft: rgba(10, 143, 132, 0.14);
+  --danger: #ff3b30;
+  --danger-soft: rgba(255, 59, 48, 0.12);
+  --focus: rgba(10, 143, 132, 0.5);
+  --vidro: rgba(255, 255, 255, 0.62);
+  --vidro-borda: rgba(255, 255, 255, 0.7);
+  --sombra-ctl: 0 0.5px 1.5px rgba(0, 0, 0, 0.18), 0 0 0 0.5px rgba(0, 0, 0, 0.06);
+  --shadow: 0 30px 80px rgba(0, 0, 0, 0.22), 0 0 0 0.5px rgba(0, 0, 0, 0.12);
+  --r: 10px;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #1e1e20;
+    --surface: #2c2c2e;
+    --surface-2: rgba(118, 118, 128, 0.24);
+    --hover: rgba(255, 255, 255, 0.06);
+    --line: rgba(84, 84, 88, 0.6);
+    --text: #f5f5f7;
+    --muted: rgba(235, 235, 245, 0.6);
+    --faint: rgba(235, 235, 245, 0.3);
+    --accent: #40c8b8;
+    --accent-ink: #062c28;
+    --accent-soft: rgba(64, 200, 184, 0.16);
+    --danger: #ff453a;
+    --danger-soft: rgba(255, 69, 58, 0.16);
+    --vidro: rgba(44, 44, 46, 0.6);
+    --vidro-borda: rgba(255, 255, 255, 0.12);
+    --sombra-ctl: 0 0.5px 1.5px rgba(0, 0, 0, 0.5), 0 0 0 0.5px rgba(255, 255, 255, 0.1);
+    --shadow: 0 30px 80px rgba(0, 0, 0, 0.6), 0 0 0 0.5px rgba(255, 255, 255, 0.12);
+  }
+}
+
+html, body { font-family: var(--font); font-size: 13px; letter-spacing: -0.005em; }
+.ph { font-size: 16px; }
+
+/* ---------------------------------------------------------------- botões: cápsulas */
+.btn {
+  height: 28px; padding: 0 14px; border-radius: 999px; border: 0;
+  background: var(--surface); box-shadow: var(--sombra-ctl);
+  font: 500 13px var(--font); letter-spacing: -0.01em;
+  transition: transform 100ms ease-out, background-color 120ms ease, filter 120ms ease;
+}
+.btn:hover { background: var(--surface); filter: brightness(0.97); }
+@media (prefers-color-scheme: dark) { .btn { background: rgba(255,255,255,0.1); } .btn:hover { filter: brightness(1.15); } }
+.btn:active { transform: scale(0.96); }
+.btn.primario { background: var(--accent); color: var(--accent-ink); box-shadow: 0 0.5px 1.5px rgba(0,0,0,0.25); }
+.btn.perigo { background: var(--danger); color: #fff; box-shadow: none; }
+.btn.icone, .icone { width: 30px; height: 30px; padding: 0; border-radius: 50%; background: transparent; box-shadow: none; color: var(--muted); }
+.icone:hover { background: var(--hover); color: var(--text); filter: none; }
+
+/* ---------------------------------------------------------------- barra: grupos de vidro */
+.topo { background: var(--vidro); backdrop-filter: blur(30px) saturate(180%); border-bottom: 0; box-shadow: 0 0.5px 0 var(--line); }
+.marca h1, .titulo h1 { font: 700 17px var(--font-display); letter-spacing: -0.025em; }
+.ferramentas { gap: 8px; }
+.ferramentas > .btn.icone, .ferramentas > a.btn.icone, .ferramentas > #pasta {
+  background: var(--vidro); box-shadow: inset 0 0.5px 0 var(--vidro-borda), var(--sombra-ctl); backdrop-filter: blur(20px);
+}
+.ferramentas > #pasta { border-radius: 999px; }
+
+.gravar { background: var(--surface); border-radius: 999px; padding: 0 14px 0 10px; }
+.gravar .ph { color: var(--danger); font-size: 18px; }
+.gravar.ativo { background: var(--danger); color: #fff; }
+.gravar.ativo .ph { color: #fff; }
+
+/* busca: cápsula preenchida, sem borda */
+.busca input {
+  height: 28px; border: 0; border-radius: 999px; background: var(--surface-2);
+  padding-left: 30px; font: 13px var(--font);
+}
+.busca input:focus { box-shadow: 0 0 0 3.5px var(--focus); background: var(--surface); }
+.busca .ph { left: 10px; font-size: 14px; }
+
+/* ---------------------------------------------------------------- switch Apple */
+.sw { width: 38px; height: 22px; border-radius: 11px; background: var(--surface-2); }
+.sw i { left: 2px; top: 2px; width: 18px; height: 18px; border-radius: 50%; box-shadow: 0 2px 4px rgba(0,0,0,0.2), 0 0 0 0.5px rgba(0,0,0,0.06); }
+[aria-checked="true"] > .sw { background: var(--accent); }
+.auto { border-radius: 999px; padding: 0 12px 0 4px; height: 32px; }
+.auto-txt b { font-weight: 600; letter-spacing: -0.01em; }
+
+/* ---------------------------------------------------------------- tabela: lista do macOS */
+.lista { padding-top: 10px; }
+.cabecalho {
+  background: transparent; border: 0; height: 28px;
+  font: 600 11.5px var(--font); color: var(--muted); letter-spacing: 0;
+}
+#linhas { background: var(--surface); border: 0; border-radius: 12px; box-shadow: 0 0 0 0.5px var(--line), 0 1px 3px rgba(0,0,0,0.04); padding: 4px; }
+.linha { height: 40px; border-top: 0; border-radius: 8px; }
+.linha:nth-child(even) { background: rgba(120, 120, 128, 0.045); }
+.linha:hover, .linha:focus-within { background: var(--accent-soft); }
+.hora { font: 600 13.5px var(--font); letter-spacing: -0.01em; }
+.estado.pronta { color: var(--text); font-weight: 500; }
+.estado.pronta .ph { color: #34c759; }
+.estado .ph { font-size: 15px; }
+.veredito, .link { border-radius: 999px; }
+.veredito.agir .ph { color: #ff9f0a; }
+.linha .acoes .btn:not(.icone) { height: 24px; font-size: 12px; background: var(--surface-2); box-shadow: none; }
+.linha .acoes .btn:not(.icone):hover { filter: brightness(0.95); }
+.linha .acoes .icone { width: 26px; height: 26px; }
+
+/* ---------------------------------------------------------------- faixa e aviso: vidro */
+.faixa { background: var(--accent-soft); border-bottom: 0; }
+.faixa .btn { height: 24px; font-size: 12px; }
+.aviso {
+  left: 50%; transform: translate(-50%, 8px); bottom: 20px; border-radius: 999px; padding: 9px 18px;
+  background: var(--vidro); color: var(--text); backdrop-filter: blur(30px) saturate(180%);
+  box-shadow: var(--shadow); font-weight: 500;
+}
+.aviso.visivel { transform: translate(-50%, 0); }
+
+/* ---------------------------------------------------------------- alerta (exclusão): macOS */
+dialog { width: 280px; padding: 22px 18px 16px; border: 0; border-radius: 14px; text-align: center; background: var(--vidro); backdrop-filter: blur(40px) saturate(180%); }
+dialog::before { content: ""; display: block; width: 56px; height: 56px; margin: 0 auto 12px; background: url("../app/wwwroot/reunioes.png") center / contain no-repeat; }
+dialog h2 { font: 700 13.5px/1.3 var(--font); }
+dialog p { font-size: 12px; margin-bottom: 16px; }
+.dialogo-acoes { flex-direction: column-reverse; gap: 8px; }
+.dialogo-acoes .btn { width: 100%; height: 30px; justify-content: center; }
+dialog::backdrop { background: rgba(0, 0, 0, 0.18); }
+
+/* ---------------------------------------------------------------- leitor: abas viram segmentado */
+.abas { background: transparent; border-bottom: 0; padding: 4px 20px 10px; }
+.abas { display: inline-flex; width: max-content; margin: 12px 20px 6px; padding: 2px; border-radius: 9px; background: var(--surface-2); gap: 0; }
+.abas button { height: 26px; padding: 0 18px; border-radius: 7px; font: 500 12.5px var(--font); color: var(--text); }
+.abas button[aria-selected="true"] { background: var(--surface); box-shadow: var(--sombra-ctl); font-weight: 600; }
+.abas button[aria-selected="true"]::after { display: none; }
+.abas button .ph { display: none; }
+.pessoa { border: 0; background: var(--surface-2); color: var(--text); height: 24px; }
+.pessoa[aria-pressed="true"] { background: var(--accent); color: var(--accent-ink); }
+.pessoa[aria-pressed="true"] b { color: inherit; opacity: 0.7; }
+.barra-texto { border-bottom: 0; }
+.fala { border-radius: 8px; }
+.veredito-topo { border-radius: 14px; }
+.acoes-lista li::before { background: #ff9f0a; color: #fff; }
+.tempo-link { text-decoration: none; background: var(--accent-soft); border-radius: 999px; padding: 1px 7px; }
+
+/* ---------------------------------------------------------------- configurações: Ajustes do Sistema */
+.lateral { background: var(--vidro); backdrop-filter: blur(30px) saturate(180%); border-right: 0; box-shadow: 0.5px 0 0 var(--line); }
+.passo { height: 30px; border-radius: 7px; font: 500 13px var(--font); color: var(--text); }
+.passo .ph {
+  width: 22px; height: 22px; border-radius: 6px; display: grid; place-items: center;
+  font-size: 13px; color: #fff; background: #8e8e93;
+}
+.passo[data-rolar="pastas"] .ph { background: #0a84ff; }
+.passo[data-rolar="transcricao"] .ph { background: #5e5ce6; }
+.passo[data-rolar="audio"] .ph { background: #ff2d55; }
+.passo[data-rolar="extras"] .ph { background: #ff3b30; }
+.passo[data-rolar="resumo"] .ph { background: #ff9f0a; }
+.passo[data-rolar="motor"] .ph { background: #30b0c7; }
+.passo[data-rolar="atualizacoes"] .ph { background: #34c759; }
+.passo[aria-current="true"], .passo[aria-current="step"] { background: #0a7d74; color: #fff; }
+.passo[aria-current="true"] .ph { background: rgba(255,255,255,0.25); }
+.passo .n { border: 0; background: var(--surface-2); }
+.passo[aria-current="step"] .n { background: rgba(255, 255, 255, 0.25); color: #fff; }
+.passo.feito .n { background: #34c759; color: #fff; }
+
+.secao + .secao { border-top: 0; margin-top: 32px; padding-top: 0; }
+.secao h1 { font: 700 26px/1.15 var(--font-display); letter-spacing: -0.03em; }
+.secao h2 { font: 700 20px/1.2 var(--font-display); letter-spacing: -0.025em; }
+.secao > p.lead { font-size: 13px; }
+/* formulário agrupado: cada controle vira uma linha numa caixa arredondada */
+.pilha { gap: 0; background: var(--surface); border-radius: 12px; box-shadow: 0 0 0 0.5px var(--line); padding: 0 14px; }
+.pilha > * { padding: 11px 0; }
+.pilha > * + * { border-top: 0.5px solid var(--line); }
+.campo { max-width: none; grid-template-columns: 1fr minmax(220px, 1.3fr); align-items: center; column-gap: 16px; }
+.campo > span { font-weight: 500; }
+.campo > small, .campo > .status-linha { grid-column: 1 / -1; }
+.campo input, .campo select, .campo textarea { border: 0; border-radius: 7px; background: var(--surface-2); min-height: 28px; font-size: 13px; }
+.campo input:focus, .campo select:focus, .campo textarea:focus { box-shadow: 0 0 0 3.5px var(--focus); }
+.campo:has(.opcoes), .campo:has(textarea), .campo:has(.pasta) { grid-template-columns: 1fr; }
+.interruptor { width: 100%; flex-direction: row-reverse; justify-content: space-between; margin: 0; padding: 11px 0; border-radius: 0; }
+.interruptor:hover { background: transparent; }
+.interruptor-txt b { font-weight: 500; font-size: 13px; }
+.interruptor-txt small { font-size: 11.5px; }
+.revela { margin: 0; padding: 0 0 12px; }
+.opcao { border: 0; border-radius: 12px; box-shadow: 0 0 0 0.5px var(--line); background: var(--surface); }
+.opcao[aria-checked="true"] { box-shadow: 0 0 0 2px var(--accent); background: var(--accent-soft); }
+.opcao .selo { background: #34c759; color: #fff; }
+.guia { border-radius: 12px; background: var(--surface-2); }
+.etapas { background: var(--surface); border-radius: 12px; box-shadow: 0 0 0 0.5px var(--line); padding: 0 14px; }
+.etapa { border-top-width: 0.5px; }
+.barra { height: 6px; border-radius: 3px; }
+.rodape { background: var(--vidro); backdrop-filter: blur(30px) saturate(180%); border-top: 0; box-shadow: 0 -0.5px 0 var(--line); }
+.btn.grande { height: 32px; padding: 0 20px; font-size: 13px; }
+.credito a, .link-ext { color: var(--accent); }
+
+/* foco no padrão do macOS: anel suave de 3,5 px, não contorno grosso */
+:focus-visible { outline: none; box-shadow: 0 0 0 3.5px var(--focus) !important; }
+.topo + .abas { border-top: 0; }

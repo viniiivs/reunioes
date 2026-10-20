@@ -1,0 +1,398 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Reuniões, protótipo Apple</title>
+<link rel="stylesheet" href="../app/wwwroot/vendor/phosphor/style.css">
+<style>
+/* Protótipo visual (não é o app). Princípios da skill apple-design: material translúcido com o
+   conteúdo rolando por baixo, hierarquia por peso de material, molas criticamente amortecidas e
+   interrompíveis, entrada e saída pelo mesmo caminho, tracking por tamanho, fonte do sistema. */
+:root {
+  color-scheme: light dark;
+  --bg: #f5f5f7; --janela: #ffffff; --grupo: #ffffff; --lateral: rgba(236, 236, 240, 0.72);
+  --vidro: rgba(250, 250, 252, 0.72); --linha: rgba(0, 0, 0, 0.08); --hover: rgba(0, 0, 0, 0.04);
+  --texto: #1d1d1f; --sec: #6e6e73; --ter: #a1a1a6;
+  --acento: #0a7d74; --acento-fundo: rgba(10, 125, 116, 0.12);
+  --vermelho: #e5383b; --sombra: 0 24px 60px rgba(0, 0, 0, 0.18), 0 2px 8px rgba(0, 0, 0, 0.08);
+  --fonte: "Segoe UI Variable Text", "Segoe UI", system-ui, -apple-system, sans-serif;
+  --display: "Segoe UI Variable Display", "Segoe UI", system-ui, -apple-system, sans-serif;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #000; --janela: #1c1c1e; --grupo: #1c1c1e; --lateral: rgba(36, 36, 40, 0.7);
+    --vidro: rgba(28, 28, 30, 0.72); --linha: rgba(255, 255, 255, 0.09); --hover: rgba(255, 255, 255, 0.05);
+    --texto: #f5f5f7; --sec: #98989d; --ter: #636366;
+    --acento: #4fc3b7; --acento-fundo: rgba(79, 195, 183, 0.16); --vermelho: #ff5a5f;
+    --sombra: 0 24px 60px rgba(0, 0, 0, 0.6), 0 2px 8px rgba(0, 0, 0, 0.4);
+  }
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; height: 100%; background: var(--bg); color: var(--texto); font: 14px/1.45 var(--fonte); -webkit-font-smoothing: antialiased; }
+body { display: flex; flex-direction: column; overflow: hidden; }
+button { font: inherit; color: inherit; }
+.ph { line-height: 1; }
+
+/* troca de variação (não faz parte do app) */
+.escolha { display: flex; gap: 6px; justify-content: center; padding: 10px; background: #111; color: #ddd; font-size: 12px; flex: none; }
+.escolha button { border: 1px solid #444; background: transparent; color: #ddd; border-radius: 999px; padding: 4px 12px; cursor: pointer; }
+.escolha button[aria-pressed="true"] { background: #fff; color: #111; border-color: #fff; }
+.variacao { flex: 1; min-height: 0; display: none; }
+.variacao.ativa { display: flex; }
+
+/* ============================================================ A: Mac nativo */
+#A { position: relative; }
+.lateral {
+  width: 232px; flex: none; padding: 52px 10px 14px; display: flex; flex-direction: column; gap: 18px;
+  background: var(--lateral); backdrop-filter: blur(30px) saturate(180%);
+  border-right: 1px solid var(--linha); position: relative; z-index: 2;
+}
+.lateral h6 { margin: 0 10px 4px; font-size: 11px; font-weight: 600; color: var(--ter); letter-spacing: 0.02em; }
+.filtro {
+  width: 100%; display: flex; align-items: center; gap: 9px; height: 30px; padding: 0 10px;
+  border: 0; border-radius: 7px; background: transparent; cursor: pointer; text-align: left; font-size: 13.5px;
+}
+.filtro .ph { font-size: 17px; color: var(--acento); width: 18px; }
+.filtro b { margin-left: auto; font-weight: 500; color: var(--ter); font-size: 12px; font-variant-numeric: tabular-nums; }
+.filtro:hover { background: var(--hover); }
+.filtro[aria-current="true"] { background: var(--acento-fundo); font-weight: 600; }
+.lateral .rodape-lat { margin-top: auto; padding: 10px; border-radius: 10px; background: var(--hover); display: grid; gap: 8px; }
+.sw-linha { display: flex; align-items: center; gap: 10px; font-size: 13px; font-weight: 600; }
+.sw-linha small { display: block; color: var(--sec); font-weight: 400; font-size: 11.5px; }
+.sw { width: 34px; height: 20px; border-radius: 10px; background: var(--acento); position: relative; flex: none; margin-left: auto; cursor: pointer; border: 0; }
+.sw[aria-checked="false"] { background: var(--ter); }
+.sw i { position: absolute; top: 2px; left: 2px; width: 16px; height: 16px; border-radius: 50%; background: #fff; box-shadow: 0 1px 3px rgba(0,0,0,0.3); will-change: transform; }
+
+.principal { flex: 1; min-width: 0; position: relative; display: flex; flex-direction: column; }
+.rolagem { flex: 1; overflow: auto; padding: 72px 28px 40px; scroll-padding-top: 72px; }
+/* barra translúcida flutuante: o conteúdo passa por baixo, sem divisória dura */
+.barra {
+  position: absolute; inset: 0 0 auto 0; height: 56px; z-index: 3;
+  display: flex; align-items: center; gap: 10px; padding: 0 20px 0 28px;
+  background: var(--vidro); backdrop-filter: blur(24px) saturate(180%);
+  mask-image: linear-gradient(#000 80%, transparent);
+}
+.barra h1 { margin: 0; font: 600 20px/1 var(--display); letter-spacing: -0.02em; }
+.barra .sub { color: var(--sec); font-size: 12.5px; margin-left: 2px; }
+.busca { margin-left: auto; display: flex; align-items: center; gap: 6px; height: 30px; width: 220px; padding: 0 10px; border-radius: 8px; background: var(--hover); color: var(--ter); font-size: 13px; }
+.gravar {
+  display: inline-flex; align-items: center; gap: 8px; height: 30px; padding: 0 14px; border: 0; border-radius: 999px;
+  background: var(--vermelho); color: #fff; font-weight: 600; font-size: 13px; cursor: pointer;
+  transition: transform 100ms ease-out;
+}
+.gravar:active { transform: scale(0.96); }
+.gravar .ponto { width: 8px; height: 8px; border-radius: 50%; background: #fff; }
+.gravar.ativo .ponto { animation: pulsa 1.6s ease-in-out infinite; }
+@keyframes pulsa { 50% { opacity: 0.35; } }
+.icone-btn { width: 30px; height: 30px; border: 0; border-radius: 8px; background: transparent; color: var(--sec); display: grid; place-items: center; cursor: pointer; font-size: 17px; }
+.icone-btn:hover { background: var(--hover); color: var(--texto); }
+
+.dia { margin: 22px 4px 8px; font: 600 13px var(--fonte); color: var(--sec); }
+.dia:first-child { margin-top: 0; }
+.grupo { background: var(--grupo); border-radius: 12px; box-shadow: 0 0 0 1px var(--linha); overflow: hidden; }
+.linha {
+  display: grid; grid-template-columns: 74px 1fr auto auto; align-items: center; gap: 14px;
+  min-height: 56px; padding: 8px 14px; cursor: pointer; position: relative;
+  transition: background-color 80ms ease;
+}
+.linha + .linha::before { content: ""; position: absolute; top: 0; left: 102px; right: 0; height: 1px; background: var(--linha); }
+.linha:hover { background: var(--hover); }
+.linha:active { background: var(--acento-fundo); }
+.linha[aria-selected="true"] { background: var(--acento-fundo); }
+.hora { font: 600 17px/1 var(--display); letter-spacing: -0.01em; font-variant-numeric: tabular-nums; }
+.hora small { display: block; margin-top: 3px; font: 400 11.5px var(--fonte); color: var(--ter); letter-spacing: 0; }
+.meio { min-width: 0; }
+.veredito { font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.veredito.nada { font-weight: 400; color: var(--sec); }
+.veredito .ph { color: var(--acento); margin-right: 4px; }
+.detalhes { display: flex; gap: 10px; color: var(--sec); font-size: 12.5px; margin-top: 2px; }
+.detalhes .app { color: var(--texto); }
+.estado { font-size: 12.5px; color: var(--sec); white-space: nowrap; }
+.estado.rodando { color: var(--acento); font-weight: 600; }
+.pilula { height: 26px; padding: 0 12px; border-radius: 999px; border: 0; background: var(--acento-fundo); color: var(--acento); font-weight: 600; font-size: 12.5px; cursor: pointer; }
+.chev { color: var(--ter); font-size: 14px; }
+
+/* painel lateral (inspector): entra pela direita e sai pela direita, com mola interrompível */
+.painel {
+  position: absolute; top: 62px; right: 12px; bottom: 12px; width: min(460px, calc(100% - 24px)); z-index: 4;
+  background: var(--vidro); backdrop-filter: blur(40px) saturate(180%);
+  border-radius: 16px; box-shadow: var(--sombra), inset 0 1px 0 rgba(255,255,255,0.25);
+  display: flex; flex-direction: column; transform: translateX(110%); will-change: transform;
+}
+.painel header { padding: 18px 20px 12px; display: flex; align-items: start; gap: 12px; }
+.painel h2 { margin: 0; font: 600 22px/1.15 var(--display); letter-spacing: -0.02em; }
+.painel header p { margin: 4px 0 0; color: var(--sec); font-size: 13px; }
+.painel header .icone-btn { margin-left: auto; }
+.seg { margin: 0 20px 12px; display: grid; grid-template-columns: 1fr 1fr; padding: 2px; border-radius: 9px; background: var(--hover); position: relative; }
+.seg button { position: relative; z-index: 1; height: 28px; border: 0; background: transparent; font-size: 13px; font-weight: 500; cursor: pointer; }
+.seg .ind { position: absolute; top: 2px; bottom: 2px; left: 2px; width: calc(50% - 2px); border-radius: 7px; background: var(--janela); box-shadow: 0 1px 4px rgba(0,0,0,0.12); will-change: transform; }
+.painel .corpo { flex: 1; overflow: auto; padding: 4px 20px 24px; }
+.cartao-acao { border-radius: 12px; background: var(--acento-fundo); padding: 14px 16px; margin-bottom: 18px; }
+.cartao-acao strong { display: block; font: 600 15px/1.35 var(--display); letter-spacing: -0.01em; }
+.cartao-acao span { color: var(--sec); font-size: 12.5px; }
+.painel h3 { margin: 18px 0 8px; font-size: 12px; font-weight: 600; color: var(--sec); letter-spacing: 0.02em; }
+.acao { display: grid; grid-template-columns: 22px 1fr; gap: 10px; padding: 10px 0; border-top: 1px solid var(--linha); }
+.acao:first-of-type { border-top: 0; }
+.acao .n { width: 22px; height: 22px; border-radius: 50%; background: var(--acento); color: #fff; display: grid; place-items: center; font-size: 12px; font-weight: 700; }
+.acao b { font-weight: 600; }
+.acao small { display: block; color: var(--sec); font-size: 12px; margin-top: 2px; }
+.tempo { color: var(--acento); font-family: ui-monospace, "Cascadia Mono", monospace; font-size: 11.5px; }
+.painel ul { margin: 0; padding-left: 18px; }
+.painel li { margin: 5px 0; }
+.fala { display: grid; grid-template-columns: 56px 1fr; gap: 10px; padding: 6px 0; }
+.fala .t { color: var(--ter); font: 11.5px/1.9 ui-monospace, "Cascadia Mono", monospace; }
+.fala b { font-weight: 600; }
+.fala.eu b { color: var(--acento); }
+
+/* ============================================================ B: Cartões */
+#B { flex-direction: column; background: var(--bg); }
+.b-rolagem { flex: 1; overflow: auto; padding: 0 0 100px; }
+.b-topo { position: sticky; top: 0; z-index: 2; padding: 26px 32px 14px; background: var(--vidro); backdrop-filter: blur(24px) saturate(180%); }
+.b-topo h1 { margin: 0 0 14px; font: 700 34px/1.05 var(--display); letter-spacing: -0.025em; }
+.b-topo .linha-topo { display: flex; align-items: center; gap: 12px; }
+.b-seg { display: inline-grid; grid-template-columns: repeat(3, auto); padding: 2px; border-radius: 9px; background: var(--hover); position: relative; }
+.b-seg button { position: relative; z-index: 1; height: 28px; padding: 0 16px; border: 0; background: transparent; font-size: 13px; font-weight: 500; cursor: pointer; white-space: nowrap; }
+.b-seg .ind { position: absolute; top: 2px; bottom: 2px; left: 0; border-radius: 7px; background: var(--janela); box-shadow: 0 1px 4px rgba(0,0,0,0.12); will-change: transform, width; }
+.b-grade { padding: 8px 32px; display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 14px; }
+.cartao {
+  border-radius: 16px; background: var(--grupo); box-shadow: 0 0 0 1px var(--linha), 0 1px 2px rgba(0,0,0,0.04);
+  padding: 16px 16px 14px; display: grid; gap: 10px; cursor: pointer;
+  transition: transform 120ms ease-out, box-shadow 160ms ease;
+}
+.cartao:hover { box-shadow: 0 0 0 1px var(--linha), 0 10px 30px rgba(0,0,0,0.08); }
+.cartao:active { transform: scale(0.985); }
+.cartao .cab { display: flex; align-items: baseline; gap: 8px; }
+.cartao .cab .hora { font-size: 22px; }
+.cartao .cab span { color: var(--sec); font-size: 12.5px; }
+.cartao .cab .tag { margin-left: auto; font-size: 11.5px; font-weight: 600; color: var(--acento); }
+.cartao .ver { font: 600 15px/1.35 var(--display); letter-spacing: -0.01em; }
+.cartao .ver.nada { font-weight: 400; color: var(--sec); }
+.cartao .pes { display: flex; align-items: center; gap: 6px; color: var(--sec); font-size: 12px; }
+.avatares { display: flex; }
+.avatares i { width: 22px; height: 22px; border-radius: 50%; border: 2px solid var(--grupo); margin-left: -6px; display: grid; place-items: center; font-style: normal; font-size: 10px; font-weight: 700; color: #fff; }
+.avatares i:first-child { margin-left: 0; }
+.cartao .pes .estado { margin-left: auto; }
+.fab {
+  position: fixed; left: 50%; bottom: 26px; transform: translateX(-50%); z-index: 5;
+  display: flex; align-items: center; gap: 14px; padding: 8px 8px 8px 18px; border-radius: 999px;
+  background: var(--vidro); backdrop-filter: blur(30px) saturate(180%); box-shadow: var(--sombra), inset 0 1px 0 rgba(255,255,255,0.3);
+}
+.fab .gravar { height: 40px; padding: 0 20px; font-size: 14px; }
+.fab small { color: var(--sec); font-size: 12px; }
+
+@media (prefers-reduced-motion: reduce) { .gravar.ativo .ponto { animation: none; } }
+@media (prefers-reduced-transparency: reduce) {
+  .lateral, .barra, .painel, .b-topo, .fab { backdrop-filter: none; background: var(--janela); }
+}
+</style>
+</head>
+<body>
+<div class="escolha" role="group" aria-label="Variação do protótipo">
+  <span style="align-self:center;margin-right:6px">Protótipo:</span>
+  <button aria-pressed="true" data-var="A">A. Mac nativo</button>
+  <button aria-pressed="false" data-var="B">B. Cartões</button>
+</div>
+
+<!-- ============================================================ A -->
+<section class="variacao ativa" id="A">
+  <aside class="lateral">
+    <div>
+      <h6>Reuniões</h6>
+      <button class="filtro" aria-current="true" data-f="todas"><i class="ph ph-tray"></i>Todas<b>12</b></button>
+      <button class="filtro" data-f="fazer"><i class="ph ph-flag"></i>Para fazer<b>3</b></button>
+      <button class="filtro" data-f="sem"><i class="ph ph-waveform"></i>Sem transcrição<b>2</b></button>
+    </div>
+    <div>
+      <h6>Pessoas</h6>
+      <button class="filtro"><i class="ph ph-user-circle"></i>Ana<b>6</b></button>
+      <button class="filtro"><i class="ph ph-user-circle"></i>Bruno<b>4</b></button>
+      <button class="filtro"><i class="ph ph-user-circle"></i>Carla<b>2</b></button>
+    </div>
+    <div class="rodape-lat">
+      <div class="sw-linha"><div>Gravar sozinho<small>ao entrar numa chamada</small></div><button class="sw" role="switch" aria-checked="true" aria-label="Gravar sozinho"><i style="transform:translateX(14px)"></i></button></div>
+    </div>
+  </aside>
+  <div class="principal">
+    <div class="barra">
+      <h1>Todas</h1><span class="sub">12 reuniões</span>
+      <div class="busca"><i class="ph ph-magnifying-glass"></i>Buscar</div>
+      <button class="icone-btn" title="Pasta"><i class="ph ph-folder-simple"></i></button>
+      <button class="gravar" id="gravarA"><span class="ponto"></span><span>Gravar</span></button>
+    </div>
+    <div class="rolagem" id="listaA"></div>
+    <aside class="painel" id="painel" aria-hidden="true">
+      <header>
+        <div><h2 id="pTitulo">Reunião</h2><p id="pMeta"></p></div>
+        <button class="icone-btn" id="fechar" aria-label="Fechar"><i class="ph ph-x"></i></button>
+      </header>
+      <div class="seg" role="tablist"><span class="ind" id="segInd"></span><button role="tab" data-aba="0">Resumo</button><button role="tab" data-aba="1">Transcrição</button></div>
+      <div class="corpo" id="pCorpo"></div>
+    </aside>
+  </div>
+</section>
+
+<!-- ============================================================ B -->
+<section class="variacao" id="B">
+  <div class="b-rolagem">
+    <div class="b-topo">
+      <h1>Reuniões</h1>
+      <div class="linha-topo">
+        <div class="b-seg" id="bSeg"><span class="ind"></span><button data-i="0">Todas</button><button data-i="1">Para fazer</button><button data-i="2">Sem transcrição</button></div>
+        <div class="busca"><i class="ph ph-magnifying-glass"></i>Buscar</div>
+      </div>
+    </div>
+    <div class="b-grade" id="gradeB"></div>
+  </div>
+  <div class="fab"><small>Gravar sozinho ligado</small><button class="gravar" id="gravarB"><span class="ponto"></span><span>Gravar</span></button></div>
+</section>
+
+<script>
+// ------------------------------------------------------------ dados fictícios
+const R = [
+  { dia: "Hoje", h: "14:30", ate: "15:08", dur: "38 min", app: "Zoom", vered: "2 ações: revisar a proposta e marcar a demo", fazer: true, pes: ["Ana", "Bruno"], est: "pronta" },
+  { dia: "Hoje", h: "10:00", ate: "10:29", dur: "29 min", app: "Meet", vered: null, pes: [], est: "transcrevendo" },
+  { dia: "Ontem", h: "16:05", ate: "17:10", dur: "1h05", app: "Teams", vered: "1 ação: enviar o relatório de vendas até sexta", fazer: true, pes: ["Carla", "Ana", "Bruno"], est: "pronta" },
+  { dia: "Ontem", h: "09:15", ate: "09:26", dur: "11 min", app: "Discord", vered: "Nada pra você fazer", fazer: false, pes: ["Bruno"], est: "pronta" },
+  { dia: "Segunda, 19 de outubro", h: "11:40", ate: "12:20", dur: "40 min", app: "Teams", vered: "3 ações: ajustar o layout da home, revisar PR, falar com o suporte", fazer: true, pes: ["Ana", "Carla"], est: "pronta" },
+  { dia: "Segunda, 19 de outubro", h: "08:50", ate: "08:52", dur: "2 min", app: "Meet", vered: null, pes: [], est: "sem" },
+];
+const COR = { Ana: "#e07a5f", Bruno: "#3d85c6", Carla: "#8e6bbf" };
+
+// ------------------------------------------------------------ mola (Apple: damping ratio + response)
+// Anima a partir do valor NA TELA (interrompível) e herda a velocidade quando redirecionada.
+function mola(el, prop, alvo, { damping = 1, response = 0.35, unidade = "px", aplicar } = {}) {
+  const st = el._mola?.[prop] || { x: alvo, v: 0 };
+  el._mola = el._mola || {};
+  el._mola[prop] = st;
+  st.alvo = alvo;
+  if (matchMedia("(prefers-reduced-motion: reduce)").matches) { st.x = alvo; st.v = 0; aplicar(st.x); return; }
+  const k = Math.pow(2 * Math.PI / response, 2), c = 4 * Math.PI * damping / response;
+  if (st.raf) return;   // já animando: só trocou o alvo, mantém posição e velocidade
+  let t0 = performance.now();
+  const passo = (t) => {
+    const dt = Math.min(0.032, (t - t0) / 1000); t0 = t;
+    const a = -k * (st.x - st.alvo) - c * st.v;
+    st.v += a * dt; st.x += st.v * dt;
+    aplicar(st.x);
+    if (Math.abs(st.x - st.alvo) < 0.3 && Math.abs(st.v) < 3) { st.x = st.alvo; st.v = 0; aplicar(st.x); st.raf = null; return; }
+    st.raf = requestAnimationFrame(passo);
+  };
+  st.raf = requestAnimationFrame(passo);
+}
+
+// ------------------------------------------------------------ A: lista + painel
+function linhaA(r, i) {
+  const est = r.est === "transcrevendo" ? `<span class="estado rodando"><i class="ph ph-circle-notch"></i> Transcrevendo 2/3</span>`
+    : r.est === "sem" ? `<button class="pilula">Transcrever</button>` : "";
+  const ver = r.vered ? `<div class="veredito ${r.fazer ? "" : "nada"}">${r.fazer ? '<i class="ph ph-flag"></i>' : ""}${r.vered}</div>`
+    : `<div class="veredito nada">${r.est === "sem" ? "Ainda não transcrita" : "Aguardando transcrição"}</div>`;
+  return `<div class="linha" role="button" data-i="${i}" aria-selected="false">
+    <div class="hora">${r.h}<small>até ${r.ate}</small></div>
+    <div class="meio">${ver}<div class="detalhes"><span class="app">${r.app}</span><span>${r.dur}</span>${r.pes.length ? `<span>${r.pes.join(", ")}</span>` : ""}</div></div>
+    ${est || "<span></span>"}<i class="ph ph-caret-right chev"></i></div>`;
+}
+function desenharA() {
+  let html = "", dia = "";
+  R.forEach((r, i) => {
+    if (r.dia !== dia) { if (dia) html += "</div>"; dia = r.dia; html += `<div class="dia">${dia}</div><div class="grupo">`; }
+    html += linhaA(r, i);
+  });
+  document.getElementById("listaA").innerHTML = html + "</div>";
+}
+desenharA();
+
+const painel = document.getElementById("painel");
+const largura = () => painel.getBoundingClientRect().width + 30;
+mola(painel, "x", largura(), { aplicar: (x) => (painel.style.transform = `translateX(${x}px)`) });
+let aberto = null;
+function abrir(i) {
+  const r = R[i];
+  document.querySelectorAll(".linha").forEach((l) => l.setAttribute("aria-selected", String(+l.dataset.i === i)));
+  document.getElementById("pTitulo").textContent = `${r.dia}, ${r.h}`;
+  document.getElementById("pMeta").textContent = `${r.dur} · ${r.app}${r.pes.length ? " · " + r.pes.join(", ") : ""}`;
+  aba(0, false);
+  aberto = i;
+  painel.setAttribute("aria-hidden", "false");
+  mola(painel, "x", 0, { damping: 1, response: 0.38, aplicar: (x) => (painel.style.transform = `translateX(${x}px)`) });
+}
+function fechar() {
+  aberto = null;
+  document.querySelectorAll(".linha").forEach((l) => l.setAttribute("aria-selected", "false"));
+  painel.setAttribute("aria-hidden", "true");
+  mola(painel, "x", largura(), { damping: 1, response: 0.32, aplicar: (x) => (painel.style.transform = `translateX(${x}px)`) });
+}
+function aba(n, anima = true) {
+  const ind = document.getElementById("segInd");
+  const w = ind.parentElement.getBoundingClientRect().width / 2 - 2;
+  const ap = (x) => (ind.style.transform = `translateX(${x}px)`);
+  anima ? mola(ind, "x", n * w, { damping: 0.85, response: 0.3, aplicar: ap }) : (ind._mola = null, ap(n * w));
+  const r = R[aberto ?? 0];
+  document.getElementById("pCorpo").innerHTML = n === 0 ? resumoHtml(r) : textoHtml(r);
+}
+function resumoHtml(r) {
+  if (!r.vered) return `<p style="color:var(--sec)">O resumo aparece aqui quando a transcrição terminar.</p>`;
+  return `<div class="cartao-acao"><strong>${r.vered}</strong><span>${r.fazer ? "Segundo o Claude, você precisa agir." : "Segundo o Claude, nada depende de você."}</span></div>
+    ${r.fazer ? `<h3>O QUE VOCÊ PRECISA FAZER</h3>
+      <div class="acao"><span class="n">1</span><div><b>Revisar os valores da proposta e devolver comentada</b><small>Pedido por Bruno · até hoje à tarde · <span class="tempo">00:00:15</span></small></div></div>
+      <div class="acao"><span class="n">2</span><div><b>Mandar o convite da demo para a Ana</b><small>Pedido por Ana · quinta · <span class="tempo">00:00:26</span></small></div></div>` : ""}
+    <h3>DO QUE SE FALOU</h3><ul><li>Proposta do cliente novo pronta, aguardando revisão.</li><li>Demo combinada para quinta.</li></ul>`;
+}
+function textoHtml() {
+  return [["00:00:00", "Ana", "Bom dia. Vamos começar pela proposta do cliente novo."], ["00:00:07", "Bruno", "Mandei ontem à noite. Falta revisar os valores."],
+    ["00:00:15", "Eu", "Eu reviso hoje à tarde e devolvo comentado."], ["00:00:26", "Ana", "E a demo, consegue marcar comigo para quinta?"], ["00:00:31", "Eu", "Consigo, te mando o convite."]]
+    .map(([t, q, d]) => `<div class="fala ${q === "Eu" ? "eu" : ""}"><span class="t">${t}</span><div><b>${q}</b> ${d}</div></div>`).join("");
+}
+document.getElementById("listaA").addEventListener("click", (e) => {
+  const l = e.target.closest(".linha");
+  if (!l) return;
+  const i = +l.dataset.i;
+  aberto === i ? fechar() : abrir(i);
+});
+document.getElementById("fechar").addEventListener("click", fechar);
+document.querySelector(".seg").addEventListener("click", (e) => { const b = e.target.closest("[data-aba]"); if (b) aba(+b.dataset.aba); });
+addEventListener("keydown", (e) => { if (e.key === "Escape" && aberto != null) fechar(); });
+document.querySelectorAll(".lateral .filtro").forEach((f) => f.addEventListener("click", () => {
+  document.querySelectorAll(".lateral .filtro").forEach((x) => x.setAttribute("aria-current", String(x === f)));
+  document.querySelector(".barra h1").textContent = f.textContent.replace(/\d+$/, "").trim();
+}));
+
+// ------------------------------------------------------------ B: cartões
+function desenharB() {
+  document.getElementById("gradeB").innerHTML = R.map((r) => `
+    <article class="cartao">
+      <div class="cab"><span class="hora">${r.h}</span><span>${r.dia} · ${r.dur}</span><span class="tag">${r.app}</span></div>
+      <div class="ver ${r.fazer ? "" : "nada"}">${r.vered ?? (r.est === "sem" ? "Ainda não transcrita" : "Transcrevendo...")}</div>
+      <div class="pes"><span class="avatares">${r.pes.map((p) => `<i style="background:${COR[p]}">${p[0]}</i>`).join("")}</span>${r.pes.join(", ")}
+        <span class="estado ${r.est === "transcrevendo" ? "rodando" : ""}">${r.est === "pronta" ? "Ler" : r.est === "sem" ? "Transcrever" : "2/3"} <i class="ph ph-caret-right"></i></span></div>
+    </article>`).join("");
+}
+desenharB();
+const bSeg = document.getElementById("bSeg");
+function bAba(i, anima = true) {
+  const b = bSeg.querySelectorAll("button")[i], ind = bSeg.querySelector(".ind");
+  const x = b.offsetLeft, w = b.offsetWidth;
+  ind.style.width = w + "px";
+  const ap = (v) => (ind.style.transform = `translateX(${v}px)`);
+  anima ? mola(ind, "x", x, { damping: 0.85, response: 0.3, aplicar: ap }) : ap(x);
+}
+bSeg.addEventListener("click", (e) => { const b = e.target.closest("button"); if (b) bAba(+b.dataset.i); });
+
+// ------------------------------------------------------------ gravar (os dois)
+["gravarA", "gravarB"].forEach((id) => document.getElementById(id).addEventListener("click", (e) => {
+  const b = e.currentTarget, on = !b.classList.contains("ativo");
+  b.classList.toggle("ativo", on);
+  b.querySelector("span:last-child").textContent = on ? "Parar  00:00" : "Gravar";
+}));
+
+// ------------------------------------------------------------ troca de variação
+document.querySelector(".escolha").addEventListener("click", (e) => {
+  const b = e.target.closest("[data-var]");
+  if (!b) return;
+  document.querySelectorAll("[data-var]").forEach((x) => x.setAttribute("aria-pressed", String(x === b)));
+  document.querySelectorAll(".variacao").forEach((v) => v.classList.toggle("ativa", v.id === b.dataset.var));
+  if (b.dataset.var === "B") requestAnimationFrame(() => bAba(0, false));
+});
+</script>
+</body>
+</html>

@@ -97,7 +97,14 @@ async function simular(cmd, args) {
   if (q.has("vazio") && cmd === "listar") return [];
   if (q.has("erro")) throw new Error("Falha simulada ao falar com o app.");
   switch (cmd) {
-    case "listar": return exemplo;
+    case "listar":
+      if (!q.has("muitas")) return exemplo;
+      // lista longa para testes de tela (rolagem, material translucido)
+      return Array.from({ length: 4 }, (_, k) => exemplo.map((g) => ({
+        ...g, base: g.base + k, inicio: new Date(new Date(g.inicio).getTime() - k * 7 * 86400000).toISOString(),
+        estado: k > 0 && g.estado === "transcrevendo" ? "pronta" : g.estado,
+        falantes: k > 0 && g.estado === "transcrevendo" ? ["Ana", "Eu"] : g.falantes,
+      }))).flat();
     case "ler": return { texto: textoExemplo, gravacao: exemplo.find((g) => g.base === args.base) || exemplo[1], resumo: q.has("semresumo") ? null : resumoExemplo, resumoAtivo: true };
     case "estado": return { gravando: q.has("gravando"), servico: { rodando: true, app: q.has("nomic") ? "Zoom" : null, atalhoOk: true }, gravarSozinho: !q.has("auto0"), atalho: "ctrl+alt+g", motorPronto: true, atualizacao: { estado: q.has("upd") ? "pronta" : "atual", nova: "1.1.0", versao: "1.0.0" } };
     case "config": return { ...configExemplo };
