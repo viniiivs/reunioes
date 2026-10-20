@@ -76,9 +76,11 @@ try {
     git -C $raiz worktree remove --force $tmp
 }
 
-# liga o GitHub Pages na primeira vez (servindo a gh-pages)
+# liga o GitHub Pages na primeira vez (servindo a gh-pages). O GitHub às vezes liga sozinho ao
+# receber a branch: aí o POST responde 409 e está tudo certo.
 gh api repos/viniiivs/reunioes/pages 2>$null | Out-Null
 if ($LASTEXITCODE -ne 0) {
-    gh api -X POST repos/viniiivs/reunioes/pages -f 'source[branch]=gh-pages' -f 'source[path]=/' | Out-Null
+    gh api -X POST repos/viniiivs/reunioes/pages -f 'source[branch]=gh-pages' -f 'source[path]=/' 2>&1 | Out-Null
 }
+$global:LASTEXITCODE = 0
 Write-Host '> publicado em https://viniiivs.github.io/reunioes/ (o GitHub leva 1 ou 2 minutos)'
