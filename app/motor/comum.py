@@ -55,13 +55,24 @@ def base_de(nome, criar=False):
 
 
 def gravacoes_abertas():
-    """Bases das gravacoes sem .sha256 (= o gravador ainda esta escrevendo)."""
+    """Bases que um gravar.py esta escrevendo agora: sem .sha256 E com o nome na linha de comando
+    de um gravador. Sem .sha256 sozinho nao basta: gravacao de sessao interrompida fica assim para sempre."""
+    import psutil
+    nomes = set()
+    for p in psutil.process_iter(["name", "cmdline"]):
+        try:
+            cmd = p.info["cmdline"] or []
+            if (p.info["name"] or "").lower().startswith("python") and any("gravar.py" in c for c in cmd):
+                nomes.update(cmd)
+        except psutil.Error:
+            continue
     raiz = pasta_gravacoes()
     r = []
     for n in os.listdir(raiz):
         cand = [os.path.join(raiz, n, n)] if os.path.isdir(os.path.join(raiz, n)) else (
             [os.path.join(raiz, n[:-len(".eu.flac")])] if n.endswith(".eu.flac") else [])
-        r += [b for b in cand if os.path.exists(b + ".eu.flac") and not os.path.exists(b + ".sha256")]
+        r += [b for b in cand if os.path.basename(b) in nomes
+              and os.path.exists(b + ".eu.flac") and not os.path.exists(b + ".sha256")]
     return r
 
 

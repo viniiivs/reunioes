@@ -39,7 +39,33 @@ Checar(!Directory.Exists(Path.Combine(raiz, "2026-10-14_17-08")), "excluir manda
 Checar(Directory.Exists(Path.Combine(raiz, "2026-10-14_17-08_rec")), "excluir nao pega a gravacao de nome parecido");
 Checar(g.Listar().Count == 1, "sobra 1 gravacao");
 
+// gravacao em curso: so a que o gravar.py cita na linha de comando, nao toda gravacao sem .sha256
+// (gravacoes de sessoes interrompidas ficam sem .sha256 para sempre e apareciam como "Gravando agora")
+foreach (var b in new[] { "2026-10-14_17-09", "2026-10-20_19-57" })
+{
+    Directory.CreateDirectory(Path.Combine(raiz, b));
+    foreach (var ext in new[] { "eu.flac", "outros.flac" }) File.WriteAllText(Path.Combine(raiz, b, $"{b}.{ext}"), "x");
+}
+var falso = System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo("py",
+    new[] { "-c", "import time; time.sleep(60)", "gravar.py", "2026-10-20_19-57" }) { CreateNoWindow = true, UseShellExecute = false })!;
+try
+{
+    Thread.Sleep(1500);
+    Gravacoes.EsquecerProcessos();
+    var est = g.Listar().ToDictionary(x => x.Base, x => x.Estado);
+    Checar(est["2026-10-20_19-57"] == "gravando", "a gravacao citada pelo gravador aparece gravando");
+    Checar(est["2026-10-14_17-09"] != "gravando", $"a antiga sem .sha256 NAO aparece gravando ({est["2026-10-14_17-09"]})");
+    g.GravarOuParar();   // com gravador rodando: pede para parar
+    Checar(File.Exists(Path.Combine(raiz, "2026-10-20_19-57", "2026-10-20_19-57.parar")), "parar marca a gravacao em curso");
+    Checar(!File.Exists(Path.Combine(raiz, "2026-10-14_17-09", "2026-10-14_17-09.parar")), "parar nao mexe na antiga");
+}
+finally
+{
+    try { falso.Kill(true); } catch { }   // o py.exe e o python.exe filho
+}
+
 Console.WriteLine(falhas == 0 ? "\nTUDO OK" : $"\n{falhas} FALHA(S)");
+foreach (var a in Directory.GetFiles(raiz, "*", SearchOption.AllDirectories)) File.SetAttributes(a, FileAttributes.Normal);
 Directory.Delete(raiz, true);
 return falhas;
 

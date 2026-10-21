@@ -128,10 +128,20 @@ public sealed class Gravacoes
 
     public bool GravandoAgora() => Pythons().Any(p => p.Linha.Contains("gravar.py"));
 
+    /// <summary>Gravações que um gravar.py está escrevendo agora. O app e o serviço passam o nome na
+    /// linha de comando; uma gravação sem .sha256 que nenhum gravador cita ficou de uma sessão
+    /// interrompida e não está gravando (antes, qualquer gravação aberta virava "gravando").</summary>
+    HashSet<string> EmGravacao(List<Proc> procs)
+    {
+        var linhas = procs.Where(p => p.Linha.Contains("gravar.py")).Select(p => p.Linha).ToList();
+        if (linhas.Count == 0) return new();
+        return Bases().Where(b => !File.Exists(Caminho(b, "sha256")) && linhas.Any(l => Cita(l, b))).ToHashSet();
+    }
+
     public List<Gravacao> Listar()
     {
         var procs = Pythons();
-        bool gravando = procs.Any(p => p.Linha.Contains("gravar.py"));
+        var gravando = EmGravacao(procs);
         var externos = procs.Where(p => p.Linha.Contains("transcrever.py")).ToList();
         string[] filaAgora; string? rodando;
         lock (trava) { filaAgora = fila.ToArray(); rodando = atualBase; }
@@ -188,7 +198,7 @@ public sealed class Gravacoes
             catch (Exception) { }
 
             string estado; string? etapa = null;
-            if (!fechada && gravando) estado = "gravando";
+            if (!fechada && gravando.Contains(b)) estado = "gravando";
             else if (rodando == b || externos.Any(p => Cita(p.Linha, b))) { estado = "transcrevendo"; etapa = Etapa(b); }
             else if (filaAgora.Contains(b)) estado = "fila";
             else if (falantes != null) estado = "pronta";
@@ -354,8 +364,8 @@ public sealed class Gravacoes
     {
         if (GravandoAgora())
         {
-            foreach (var b in Bases())
-                if (!File.Exists(Caminho(b, "sha256"))) File.WriteAllText(Caminho(b, "parar"), "");
+            foreach (var b in EmGravacao(Pythons()))
+                File.WriteAllText(Caminho(b, "parar"), "");
             EsquecerProcessos();
             return;
         }
