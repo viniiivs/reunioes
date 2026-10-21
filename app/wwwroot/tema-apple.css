@@ -228,5 +228,5 @@ dialog::backdrop { background: rgba(0, 0, 0, 0.18); }
   ::-webkit-scrollbar-thumb { background-color: rgba(255, 255, 255, 0.2); }
   ::-webkit-scrollbar-thumb:hover { background-color: rgba(255, 255, 255, 0.4); }
 }
-body:has(.lista) .lista::-webkit-scrollbar-track { margin-top: 66px; margin-bottom: 4px; }
+body:has(.lista) .lista::-webkit-scrollbar-track { margin-top: calc(14px + var(--topo-h, 52px) + var(--faixa-h, 0px)); margin-bottom: 4px; }
 .lista, .conteudo, .texto, .resumo { scrollbar-gutter: auto; }

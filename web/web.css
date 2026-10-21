@@ -1,5 +1,4 @@
-/* Só na versão web (o build/web.ps1 injeta): telas estreitas, como o celular.
-   O app de Windows tem janela com tamanho mínimo e não precisa disto. */
+/* Só na versão web (o build/web.ps1 injeta). O layout de tela estreita está em responsivo.css. */
 
 /* arrastar um arquivo para a página */
 body.soltar::after {
@@ -7,60 +6,4 @@ body.soltar::after {
   display: grid; place-items: center; border-radius: 22px;
   border: 2px dashed var(--accent); background: color-mix(in srgb, var(--bg) 82%, transparent);
   color: var(--accent); font: 600 18px var(--font-display); pointer-events: none;
-}
-
-@media (max-width: 720px) {
-  /* ---- topo: marca em cima, ferramentas embaixo ---- */
-  body:has(.lista) .topo {
-    height: auto; flex-wrap: wrap; row-gap: 8px; padding: 10px 12px; inset: 8px 8px auto 8px;
-  }
-  body:has(.lista) .topo .ferramentas { width: 100%; flex-wrap: wrap; row-gap: 8px; }
-  body:has(.lista) .topo .busca { order: 9; flex: 1 1 100%; min-width: 0; }
-  body:has(.lista) .topo .busca input { width: 100%; }
-  body:has(.lista) .topo #engrenagem { margin-left: auto; }
-  #atualizar { display: none; }
-  body:has(.lista) .lista { padding: 164px 8px 16px; }
-  body:has(.lista) .lista::-webkit-scrollbar-track { margin-top: 162px; }
-  body:has(.lista) .faixa:not([hidden]) { inset: 160px 8px auto 8px; }
-  body:has(.lista) .faixa:not([hidden]) ~ .lista { padding-top: 220px; }
-
-  /* ---- lista: cada gravação vira um cartão de duas linhas ---- */
-  .cabecalho { display: none; }
-  #linhas { min-width: 0; border-top: 1px solid var(--line); border-radius: var(--r); }
-  .linha {
-    height: auto; padding: 10px 12px; row-gap: 8px;
-    grid-template-columns: auto minmax(0, 1fr) auto;
-  }
-  .linha > :nth-child(1) { grid-area: 1 / 1; }                 /* data */
-  .linha > :nth-child(2) { grid-area: 1 / 2; }                 /* horário */
-  .linha > :nth-child(3) { grid-area: 1 / 3; }                 /* duração */
-  .linha > :nth-child(4), .linha > :nth-child(5), .linha > :nth-child(6) { display: none; }
-  .linha > :nth-child(7) { grid-area: 2 / 1 / 3 / 3; }         /* transcrição */
-  .linha > :nth-child(8) { grid-area: 3 / 1 / 4 / 4; }         /* para você */
-  .linha > :nth-child(8):empty { display: none; }
-  .linha > :nth-child(9) { grid-area: 2 / 3; justify-self: end; }   /* ações */
-  .acoes .btn.icone { width: 36px; height: 36px; }
-
-  /* ---- Configurações: o menu lateral vira uma faixa rolável no topo ---- */
-  .moldura { grid-template-rows: auto 1fr; }
-  .lateral {
-    display: flex; flex-direction: row; align-items: center; gap: 8px;
-    padding: 8px 10px; border-right: 0; border-bottom: 1px solid var(--line);
-    overflow-x: auto; overflow-y: hidden; scrollbar-width: none;
-  }
-  .lateral::-webkit-scrollbar { display: none; }
-  .lateral .marca { display: none; }
-  .voltar { margin: 0; flex: none; }
-  #passos { display: flex; gap: 4px; }
-  .passo { flex: none; height: 34px; white-space: nowrap; }
-  .conteudo { padding: 20px 16px 32px; }
-  .campo { grid-template-columns: 1fr !important; row-gap: 6px; }
-  .rodape { padding: 10px 12px; }
-  .rodape .dica { display: none; }
-
-  /* ---- leitor ---- */
-  .barra-texto .ferramentas { width: 100%; }
-  .barra-texto .busca { flex: 1; min-width: 0; }
-  .barra-texto .busca input { width: 100%; }
-  .texto { padding: 8px 10px 32px; }
 }
