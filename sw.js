@@ -3,7 +3,7 @@
 //    A biblioteca de IA (CDN, URL com versão fixa) vem do cache primeiro.
 // 2. Isola a página (COOP/COEP): libera várias threads no WebAssembly, o que deixa a transcrição
 //    pelo processador várias vezes mais rápida. O GitHub Pages não deixa configurar esses cabeçalhos.
-const CACHE = "reunioes-1.0.8";
+const CACHE = "reunioes-1.0.9";
 const CDN = "https://cdn.jsdelivr.net/";
 
 self.addEventListener("install", () => self.skipWaiting());

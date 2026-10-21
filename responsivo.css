@@ -41,19 +41,19 @@
   .acoes .btn.icone { width: 36px; height: 36px; }
 }
 
-/* ---- Configurações: o menu lateral vira uma faixa rolável no topo ---- */
+/* ---- Configurações: o menu lateral vira pílulas no topo, quebrando linha (rolar para o lado
+   escondia as últimas seções: com mouse não dá para chegar nelas) ---- */
 @media (max-width: 860px) {
   .moldura { grid-template-columns: 1fr; grid-template-rows: auto 1fr; }
   .lateral {
-    display: flex; flex-direction: row; align-items: center; gap: 8px;
-    padding: 8px 10px; border-right: 0; border-bottom: 1px solid var(--line);
-    overflow-x: auto; overflow-y: hidden; scrollbar-width: none;
+    display: flex; flex-direction: row; flex-wrap: wrap; align-items: center; gap: 4px;
+    padding: 8px 10px; border-right: 0; border-bottom: 1px solid var(--line); overflow: visible;
   }
-  .lateral::-webkit-scrollbar { display: none; }
   .lateral .marca { display: none; }
-  .voltar { margin: 0; flex: none; }
-  #passos { display: flex; gap: 4px; }
-  .passo { flex: none; height: 34px; white-space: nowrap; }
+  .voltar { margin: 0 4px 0 0; flex: none; height: 30px; padding: 0 8px; }
+  #passos { display: contents; }   /* as pílulas fluem junto com o "voltar" */
+  .passo { flex: none; height: 30px; padding: 0 10px 0 6px; gap: 6px; white-space: nowrap; font-size: 13px; }
+  .passo .ph { width: 18px; font-size: 15px; }
   .conteudo { padding: 20px 16px 32px; }
   .campo { grid-template-columns: 1fr !important; row-gap: 6px; }
   .opcoes { grid-template-columns: 1fr; }
