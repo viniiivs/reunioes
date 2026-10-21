@@ -41,26 +41,49 @@
   .acoes .btn.icone { width: 36px; height: 36px; }
 }
 
-/* ---- Configurações: o menu lateral vira pílulas no topo, quebrando linha (rolar para o lado
-   escondia as últimas seções: com mouse não dá para chegar nelas) ---- */
+/* ---- Configurações em janela estreita: navegação em pilha, como os Ajustes do celular ----
+   Primeiro a lista de seções (agrupada, com ›); tocar abre a seção com "‹ Configurações".
+   No assistente (body.na-secao sempre) a lista some e o rodapé conduz os passos. */
+.titulo-lista, .passo .seta, .voltar-secoes { display: none; }
+
 @media (max-width: 860px) {
-  .moldura { grid-template-columns: 1fr; grid-template-rows: auto 1fr; }
+  .moldura { grid-template-columns: 1fr; }
+  body.na-secao .lateral { display: none; }
+  body:not(.na-secao) .conteudo { display: none; }
+
   .lateral {
-    display: flex; flex-direction: row; flex-wrap: wrap; align-items: center; gap: 4px;
-    padding: 8px 10px; border-right: 0; border-bottom: 1px solid var(--line); overflow: visible;
+    display: flex; flex-direction: column; gap: 0; padding: 12px 16px 28px; overflow: auto;
+    border-right: 0; box-shadow: none; background: transparent; backdrop-filter: none;
   }
-  .lateral .marca { display: none; }
-  .voltar { margin: 0 4px 0 0; flex: none; height: 30px; padding: 0 8px; }
-  #passos { display: contents; }   /* as pílulas fluem junto com o "voltar" */
-  .passo { flex: none; height: 30px; padding: 0 10px 0 6px; gap: 6px; white-space: nowrap; font-size: 13px; }
-  .passo .ph { width: 18px; font-size: 15px; }
-  .conteudo { padding: 20px 16px 32px; }
+  .lateral .voltar { align-self: flex-start; margin: 0 0 6px -8px; }
+  .titulo-lista { display: block; margin: 2px 0 16px; font: 700 28px/1.15 var(--font-display); letter-spacing: -0.02em; }
+  #passos { display: block; background: var(--surface); border-radius: 12px; overflow: hidden; }
+  .passo {
+    position: relative; width: 100%; height: 50px; padding: 0 14px; gap: 12px;
+    border-radius: 0; background: transparent; font: 400 15px var(--font); color: var(--text);
+  }
+  .passo:hover { background: transparent; }
+  .passo:active { background: var(--hover); }
+  .passo:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+  .passo span { flex: 1; text-align: left; }
+  .passo .ph:not(.seta) { width: 30px; height: 30px; border-radius: 8px; font-size: 17px; flex: none; }
+  .passo[data-ir] .ph.seta { display: block; width: auto; height: auto; background: none; color: var(--faint); font-size: 15px; }   /* vence a cor do ícone da seção */
+  .passo + .passo::before { content: ""; position: absolute; top: 0; left: 56px; right: 0; border-top: 1px solid var(--line); }
+  .lateral .marca { order: 9; align-self: center; margin-top: 20px; padding: 0; opacity: 0.6; }
+  .lateral .marca img { width: 20px; height: 20px; }
+  .lateral .marca b { font-size: 13px; }
+
+  .voltar-secoes {
+    display: inline-flex; align-items: center; gap: 4px; margin: -6px 0 10px -8px; padding: 6px 8px;
+    border: 0; border-radius: 8px; background: transparent; color: var(--accent);
+    font: 500 15px var(--font); cursor: pointer;
+  }
+  .voltar-secoes:hover { background: var(--hover); }
+  .conteudo { padding: 16px 16px 32px; }
   .campo { grid-template-columns: 1fr !important; row-gap: 6px; }
   .opcoes { grid-template-columns: 1fr; }
-  .rodape { padding: 10px 12px; }
-  .rodape .dica { display: none; }
+  .rodape { padding: 10px 16px; }
 }
-
 /* ---- leitor ---- */
 @media (max-width: 760px) {
   .barra-texto .ferramentas { width: 100%; }

@@ -11,6 +11,13 @@ const rodape = $("#rodape");
 
 let cfg, sis, dev, tokenNovo = null, pendentes = [], atalhoOcupado = false;
 let passo = 0, sujo = false, instalando = false, instalado = false;
+// Janela estreita: navegação em pilha, como os Ajustes do celular. Primeiro a lista de seções;
+// tocar abre a seção, com "‹ Configurações" para voltar. Na janela larga a lista fica ao lado.
+const estreita = matchMedia("(max-width: 860px)");
+let naSecao = false;
+function marcarPilha() { document.body.classList.toggle("na-secao", SETUP || naSecao); }
+// na lista em pilha nada fica marcado como atual (como nos Ajustes do celular)
+estreita.addEventListener("change", () => desenharLateral());
 
 const GITHUB = "https://github.com/viniiivs";
 const REPO = "https://github.com/viniiivs/reunioes";
@@ -351,13 +358,15 @@ function desenharLateral() {
   $("#passos").innerHTML = lista.map((s, i) => SETUP
     ? `<button class="passo ${i < passo ? "feito" : ""}" ${i === passo ? 'aria-current="step"' : ""} data-ir="${i}" ${i > passo || instalando || instalado && i < lista.findIndex((x) => x.id === "pronto") ? "disabled" : ""}>
          <span class="n">${i < passo ? '<i class="ph ph-check"></i>' : i + 1}</span>${s.titulo}</button>`
-    : `<button class="passo" data-ir="${i}" data-rolar="${s.id}" ${i === passo ? 'aria-current="true"' : ""}><i class="ph ph-${s.icone}" aria-hidden="true"></i>${s.titulo}</button>`).join("");
+    : `<button class="passo" data-ir="${i}" data-rolar="${s.id}" ${i === passo && !estreita.matches ? 'aria-current="true"' : ""}><i class="ph ph-${s.icone}" aria-hidden="true"></i><span>${s.titulo}</span><i class="ph ph-caret-right seta" aria-hidden="true"></i></button>`).join("");
 }
 
 function desenhar() {
   const lista = visiveis();
   // Uma seção por vez, nos dois modos (como os Ajustes do Sistema): o item clicado é o que aparece.
-  conteudo.innerHTML = secaoHtml(lista[passo]);
+  conteudo.innerHTML = (SETUP ? "" : `<button class="voltar-secoes" type="button" data-voltar-secoes><i class="ph ph-caret-left" aria-hidden="true"></i> Configurações</button>`)
+    + secaoHtml(lista[passo]);
+  marcarPilha();
   conteudo.scrollTop = 0;
   if (SETUP) conteudo.focus();
   else if (lista[passo].id === "atualizacoes") chamar("atualizacao").then(desenharAtualizacao).catch(() => {});
@@ -437,6 +446,7 @@ conteudo.addEventListener("change", (e) => {
 
 conteudo.addEventListener("click", async (e) => {
   const t = e.target;
+  if (t.closest("[data-voltar-secoes]")) return voltarParaLista();
   const link = t.closest("[data-link]");
   if (link) { e.preventDefault(); return chamar("abrirLink", { url: link.dataset.link }); }
   const esc_ = t.closest("[data-escolher]");
@@ -520,6 +530,7 @@ $("#passos").addEventListener("click", (e) => {
   if (!b || b.disabled || (SETUP && (instalando || instalado))) return;
   visiveis()[passo].ler?.();   // guarda o que foi digitado antes de trocar de seção
   passo = +b.dataset.ir;
+  naSecao = true;
   desenhar();
 });
 
@@ -528,6 +539,7 @@ function irPara(id) {
   if (i < 0 || i === passo) return;
   visiveis()[passo].ler?.();
   passo = i;
+  naSecao = true;
   desenhar();
 }
 
@@ -547,9 +559,20 @@ async function abrirSecao(id) {
     atalhoOcupado = !!e?.servico?.rodando && e.servico.atalhoOk === false;
   }
   if (id) { const i = visiveis().findIndex((s) => s.id === id); if (i >= 0) passo = i; }
+  naSecao = !!id;   // pela engrenagem abre na lista; por um atalho ("Abrir Configurações" da faixa), direto na seção
   desenhar();
 }
-addEventListener("keydown", (e) => { if (e.key === "Escape" && !SETUP && !e.defaultPrevented) $("#voltar").click(); });
+function voltarParaLista() {
+  visiveis()[passo].ler?.();
+  naSecao = false;
+  marcarPilha();
+  document.querySelector(`.passo[data-ir="${passo}"]`)?.focus();
+}
+addEventListener("keydown", (e) => {
+  if (e.key !== "Escape" || SETUP || e.defaultPrevented) return;
+  if (estreita.matches && naSecao) voltarParaLista();
+  else $("#voltar").click();
+});
 
 addEventListener("beforeunload", (e) => { if (sujo || instalando) e.preventDefault(); });
 
