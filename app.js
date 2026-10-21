@@ -408,5 +408,18 @@ if (naWeb) {
   });
 }
 
+// O topo e a faixa flutuam por cima da lista; em janela estreita o topo cresce (duas linhas).
+// A lista desce o quanto eles ocupam.
+const medir = () => {
+  const raiz = document.documentElement.style;
+  raiz.setProperty("--topo-h", $(".topo").offsetHeight + "px");
+  const fx = $("#faixa");
+  raiz.setProperty("--faixa-h", fx.hidden ? "0px" : fx.offsetHeight + 6 + "px");
+};
+const observador = new ResizeObserver(medir);
+observador.observe($(".topo"));
+observador.observe($("#faixa"));
+new MutationObserver(medir).observe($("#faixa"), { attributes: true, attributeFilter: ["hidden"] });
+
 esqueleto();
 carregar();
