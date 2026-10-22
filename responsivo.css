@@ -90,4 +90,10 @@
   .barra-texto .busca { flex: 1; min-width: 0; }
   .barra-texto .busca input { width: 100%; }
   .texto { padding: 8px 10px 32px; }
+  .topo:has(.voltar-lista:not([hidden])) { gap: 8px; padding-left: 14px; padding-right: 14px; }
+}
+@media (max-width: 480px) {
+  .voltar-lista span { display: none; }   /* só a seta, como no celular com título longo */
+  .topo .ferramentas #copiar-resumo { font-size: 0; gap: 0; width: 34px; padding: 0; justify-content: center; }
+  .topo .ferramentas #copiar-resumo .ph { font-size: 16px; }
 }
