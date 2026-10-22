@@ -15,8 +15,8 @@ public record Gravacao(
     string Inicio,           // ISO 8601
     double? Duracao,         // segundos; null = FLAC sem cabecalho final (gravacao interrompida)
     long Bytes,
-    string Estado,           // gravando | incompleta | sem | fila | transcrevendo | pronta
-    string? Etapa,           // "2/3 transcrevendo os outros"
+    string Estado,           // gravando | incompleta | sem | fila | transcrevendo | pausada | pronta
+    string? Etapa,           // "2/3 transcrevendo os outros"; na pausada, o que ja ficou pronto
     string[]? Falantes,      // nomes na transcricao
     App[]? Apps,             // apps que tocaram som durante a gravacao
     Resumo? Resumo,
@@ -24,7 +24,7 @@ public record Gravacao(
     bool Vozes);             // tem .falantes.json (da para nomear as vozes)
 
 /// <summary>Resumo da IA: estado gerando | fila | pronto | erro.</summary>
-public record Resumo(string Estado, string? Veredito, bool? PrecisaAgir, int? Acoes, string? Erro);
+public record Resumo(string Estado, string? Veredito, bool? PrecisaAgir, int? Acoes, string? Erro, int? Feitas = null);
 
 /// <summary>Le a pasta das gravacoes e roda o motor: gravar, transcrever (fila, uma por vez: a GPU
 /// e uma so), nomear vozes e resumir com o Claude Code.</summary>
@@ -202,6 +202,7 @@ public sealed class Gravacoes
             else if (rodando == b || externos.Any(p => Cita(p.Linha, b))) { estado = "transcrevendo"; etapa = Etapa(b); }
             else if (filaAgora.Contains(b)) estado = "fila";
             else if (falantes != null) estado = "pronta";
+            else if (Pausada(b) is { } feito) { estado = "pausada"; etapa = feito; }
             else if (duracao == null) estado = "incompleta";
             else estado = "sem";
 
@@ -218,6 +219,16 @@ public sealed class Gravacoes
                 falantes != null ? EstadoResumo(b) : null, auto, File.Exists(Caminho(b, "falantes.json"))));
         }
         return lista.OrderByDescending(g => g.Inicio, StringComparer.Ordinal).ToList();
+    }
+
+    /// <summary>Transcricao pausada: o motor guardou etapas prontas (parcial.*.json) e retoma delas.
+    /// Devolve o que ja esta pronto, para mostrar; null se nao ha nada guardado.</summary>
+    string? Pausada(string b)
+    {
+        var prontas = new List<string>();
+        if (File.Exists(Caminho(b, "parcial.eu.json"))) prontas.Add("sua voz");
+        if (File.Exists(Caminho(b, "parcial.outros.json"))) prontas.Add("a voz dos outros");
+        return prontas.Count == 0 ? null : "já tem " + string.Join(" e ", prontas);
     }
 
     /// <summary>Cada gravacao mora em &lt;pasta&gt;\&lt;nome&gt;\&lt;nome&gt;.*; versoes antigas deixavam tudo solto
@@ -402,6 +413,8 @@ public sealed class Gravacoes
         Mudou?.Invoke();
     }
 
+    /// <summary>Pausa a que esta transcrevendo (ou tira da fila). As etapas prontas ficam guardadas:
+    /// transcrever de novo continua de onde parou.</summary>
     public void Cancelar(string b)
     {
         lock (trava)
@@ -412,6 +425,42 @@ public sealed class Gravacoes
         foreach (var p in Pythons().Where(p => p.Linha.Contains("transcrever.py") && Cita(p.Linha, b)))
             try { Process.GetProcessById(p.Pid).Kill(true); } catch (Exception) { }
         EsquecerProcessos();
+        Mudou?.Invoke();
+    }
+
+    /// <summary>"Transcrever esta primeiro": pausa a que esta rodando, faz esta e depois retoma a pausada.</summary>
+    public void Priorizar(string b)
+    {
+        Validar(b);
+        lock (trava)
+        {
+            if (atualBase == b) return;
+            fila.Remove(b);
+            fila.Insert(0, b);
+            if (atualBase != null)
+            {
+                fila.Remove(atualBase);
+                fila.Insert(1, atualBase);   // volta logo depois, do ponto em que parou
+                try { atual?.Kill(true); } catch (Exception) { }
+            }
+        }
+        EsquecerProcessos();
+        Proximo();
+        Mudou?.Invoke();
+    }
+
+    /// <summary>Marca uma acao do resumo como feita (ou nao). Fica no proprio resumo.json; gerar o
+    /// resumo de novo recomeca as marcas, porque as acoes podem mudar.</summary>
+    public void MarcarAcao(string b, int i, bool feita)
+    {
+        Validar(b);
+        var j = Caminho(b, "resumo.json");
+        if (!File.Exists(j)) throw new InvalidOperationException("Esta reunião ainda não tem resumo.");
+        var no = JsonNode.Parse(LerCompartilhado(j)) as JsonObject ?? throw new InvalidOperationException("Resumo ilegível.");
+        if (no["acoes"] is not JsonArray acoes || i < 0 || i >= acoes.Count || acoes[i] is not JsonObject acao)
+            throw new InvalidOperationException("Ação não encontrada.");
+        acao["feita"] = feita;
+        File.WriteAllText(j, no.ToJsonString(Config.Json));
         Mudou?.Invoke();
     }
 
@@ -515,8 +564,10 @@ public sealed class Gravacoes
             {
                 using var d = JsonDocument.Parse(LerCompartilhado(j));
                 var r = d.RootElement;
+                var acoes = r.GetProperty("acoes");
+                int feitas = acoes.EnumerateArray().Count(a => a.TryGetProperty("feita", out var x) && x.ValueKind == JsonValueKind.True);
                 return new Resumo("pronto", r.GetProperty("veredito").GetString(), r.GetProperty("precisa_agir").GetBoolean(),
-                    r.GetProperty("acoes").GetArrayLength(), null);
+                    acoes.GetArrayLength(), null, feitas);
             }
             catch (Exception ex) { return new Resumo("erro", null, null, null, "resumo.json ilegível: " + ex.Message); }
         }

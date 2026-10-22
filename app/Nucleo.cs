@@ -77,6 +77,8 @@ public static class Nucleo
             case "pasta": return Abrir(Gravacoes.Pasta(b));
             case "transcrever": Gravacoes.Transcrever(b!); return null;
             case "cancelar": Gravacoes.Cancelar(b!); return null;
+            case "priorizar": Gravacoes.Priorizar(b!); return null;
+            case "marcarAcao": await Task.Run(() => Gravacoes.MarcarAcao(b!, a["i"]!.GetValue<int>(), a["feita"]!.GetValue<bool>())); return null;
             case "excluir": Gravacoes.Excluir(b!); return null;
             case "ler": return await Task.Run(() => Gravacoes.Ler(b!));
             case "resumir": Gravacoes.Resumir(b!); return null;

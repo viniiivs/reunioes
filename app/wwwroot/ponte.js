@@ -53,10 +53,12 @@ const dia = (d, h, m) => { const x = new Date(hoje); x.setDate(x.getDate() - d);
 const exemplo = [
   { base: "a", inicio: dia(0, 10, 0), duracao: 1712, bytes: 84211000, estado: "transcrevendo", etapa: "2/3 transcrevendo os outros", falantes: null, apps: [{ exe: "zoom.exe", segundos: 1690 }], auto: "Zoom", vozes: false },
   { base: "b", inicio: dia(1, 14, 30), duracao: 2290, bytes: 101300000, estado: "pronta", falantes: ["Ana", "Eu", "Bruno", "Falante 3"], apps: null, vozes: true,
-    resumo: { estado: "pronto", veredito: "2 ações: revisar a proposta e marcar a demo com a Ana", precisaAgir: true, acoes: 2 } },
+    resumo: { estado: "pronto", veredito: "2 ações: revisar a proposta e marcar a demo com a Ana", precisaAgir: true, acoes: 2, feitas: 1 } },
   { base: "c", inicio: dia(2, 9, 15), duracao: 640, bytes: 27100000, estado: "pronta", falantes: ["Outros", "Eu"], apps: null, vozes: false,
     resumo: { estado: "pronto", veredito: "Nada pra você fazer", precisaAgir: false, acoes: 0 } },
   { base: "d", inicio: dia(3, 16, 5), duracao: 3920, bytes: 190400000, estado: "pronta", falantes: ["Ana", "Eu"], apps: null, vozes: true, resumo: null },
+  { base: "g", inicio: dia(3, 9, 0), duracao: 2710, bytes: 120000000, estado: "pausada", etapa: "já tem sua voz", falantes: null, apps: null },
+  { base: "h", inicio: dia(3, 8, 0), duracao: 1500, bytes: 70000000, estado: "fila", falantes: null, apps: null },
   { base: "e", inicio: dia(4, 11, 40), duracao: 15, bytes: 52000, estado: "sem", falantes: null, apps: null },
   { base: "f", inicio: dia(6, 15, 0), duracao: null, bytes: 88000000, estado: "incompleta", falantes: null, apps: null },
 ];
@@ -78,7 +80,7 @@ const resumoExemplo = {
   precisa_agir: true,
   veredito: "2 ações: revisar a proposta e marcar a demo com a Ana",
   acoes: [
-    { acao: "Revisar os valores da proposta do cliente novo e devolver comentada", prazo: "hoje à tarde", pedido_por: "Bruno", tempo: "00:00:15" },
+    { acao: "Revisar os valores da proposta do cliente novo e devolver comentada", prazo: "hoje à tarde", pedido_por: "Bruno", tempo: "00:00:15", feita: true },
     { acao: "Mandar o convite da demo para a Ana", prazo: "quinta", pedido_por: "Ana", tempo: "00:00:26" },
   ],
   atencao: ["A proposta já foi enviada pelo Bruno; só falta a revisão."],

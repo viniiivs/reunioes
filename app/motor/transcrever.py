@@ -10,6 +10,9 @@ Saidas na pasta das gravacoes:
   <nome>.transcricao.json falas + segmentos com tempo e falante
   <nome>.falantes.json    embedding de cada falante desta reuniao (usado pelo nomear.py)
 
+Pausar = matar o processo. Cada etapa pronta fica em <nome>.parcial.<etapa>.json; rodar de novo
+retoma dali (se o modelo e o idioma forem os mesmos) e os parciais somem quando termina.
+
 Uso:  transcrever.py <nome> [--falantes N]
 Idioma, modelo, GPU e separacao de vozes vem da configuracao do app. O token do
 Hugging Face (para separar vozes) vem da variavel HF_TOKEN, que o app passa.
@@ -69,6 +72,23 @@ def asr(audio, modelo, device, idioma):
     return r
 
 
+def ler_parcial(base, etapa, chave):
+    """Resultado de uma etapa ja feita numa execucao anterior (pausada), ou None."""
+    try:
+        with open(f"{base}.parcial.{etapa}.json", encoding="utf-8") as f:
+            d = json.load(f)
+        return d["r"] if d.get("chave") == chave else None
+    except (OSError, ValueError, KeyError):
+        return None
+
+
+def salvar_parcial(base, etapa, chave, r):
+    tmp = f"{base}.parcial.{etapa}.tmp"
+    with open(tmp, "w", encoding="utf-8") as f:
+        json.dump({"chave": chave, "r": r}, f, ensure_ascii=False, default=float)
+    os.replace(tmp, f"{base}.parcial.{etapa}.json")   # atomico: pausar no meio da escrita nao corrompe
+
+
 def cos(a, b):
     a, b = np.asarray(a), np.asarray(b)
     return float(a @ b / (np.linalg.norm(a) * np.linalg.norm(b) + 1e-9))
@@ -122,15 +142,27 @@ def main():
         print("[aviso] separar vozes esta ligado mas falta o token do Hugging Face; todos viram 'Outros'", flush=True)
     etapas = 3 if separar else 2
 
+    chave = {"modelo": modelo, "idioma": idioma}
     falas = []  # (inicio, fim, quem, texto)
     if os.path.exists(arq_eu):
-        print(f"[1/{etapas}] transcrevendo seu microfone", flush=True)
-        r = asr(whisperx.load_audio(arq_eu), modelo, device, idioma)
-        falas += [(s["start"], s["end"], "Eu", s["text"].strip()) for s in r["segments"]]
+        eu = ler_parcial(base, "eu", chave)
+        if eu is None:
+            print(f"[1/{etapas}] transcrevendo seu microfone", flush=True)
+            r = asr(whisperx.load_audio(arq_eu), modelo, device, idioma)
+            eu = [[s["start"], s["end"], s["text"].strip()] for s in r["segments"]]
+            salvar_parcial(base, "eu", chave, eu)
+        else:
+            print(f"[1/{etapas}] seu microfone (ja estava pronto)", flush=True)
+        falas += [(i, e, "Eu", t) for i, e, t in eu]
 
-    print(f"[2/{etapas}] transcrevendo os outros", flush=True)
     audio = whisperx.load_audio(arq_outros)
-    r = asr(audio, modelo, device, idioma)
+    r = ler_parcial(base, "outros", chave)
+    if r is None:
+        print(f"[2/{etapas}] transcrevendo os outros", flush=True)
+        r = asr(audio, modelo, device, idioma)
+        salvar_parcial(base, "outros", chave, r)
+    else:
+        print(f"[2/{etapas}] os outros (ja estava pronto)", flush=True)
 
     nomes, emb = {}, {}
     if separar:
@@ -171,6 +203,11 @@ def main():
     if separar:
         with open(base + ".falantes.json", "w", encoding="utf-8") as f:
             json.dump({"nomes": nomes, "embeddings": emb}, f)
+    for etapa in ("eu", "outros"):
+        try:
+            os.remove(f"{base}.parcial.{etapa}.json")
+        except OSError:
+            pass
 
     print(f"\n[pronto] {base}.transcricao.md", flush=True)
 

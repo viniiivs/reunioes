@@ -12,6 +12,7 @@ const canal = new BroadcastChannel("reunioes");
 const ouvintes = new Set();
 let gravacao = null;
 const cancelados = new Set();
+const voltarParaFila = new Map();   // base pausada por "Primeiro" -> prioridade com que volta para a fila
 
 export function ligar(f) { ouvintes.add(f); }
 function emitir(m, outrasAbas = true) {
@@ -19,7 +20,12 @@ function emitir(m, outrasAbas = true) {
   if (outrasAbas) canal.postMessage(m);
 }
 canal.onmessage = ({ data: m }) => {
-  if (m.tipo === "cancelar") { cancelados.add(m.base); if (emAndamento === m.base) motor.abortar(); return; }
+  if (m.tipo === "cancelar") {
+    cancelados.add(m.base);
+    if (m.voltar != null) voltarParaFila.set(m.base, m.voltar);
+    if (emAndamento === m.base) motor.abortar();
+    return;
+  }
   if (m.tipo === "fila") return rodarFila();
   ouvintes.forEach((f) => f(m));
 };
@@ -44,7 +50,7 @@ const extDe = (tipo) => (/ogg/.test(tipo) ? "ogg" : /mp4|m4a|aac/.test(tipo) ? "
 const ORIGEM = { browser: "Aba do navegador", window: "Janela", monitor: "Tela inteira" };
 
 function paraLista(g) {
-  const { texto, resumoDados, faixas, ...resto } = g;
+  const { texto, resumoDados, faixas, parcial, ...resto } = g;
   return resto;
 }
 
@@ -117,7 +123,7 @@ async function transcrever(base) {
   const g = await precisa(base);
   if (g.estado === "fila" || g.estado === "transcrevendo") return;
   cancelados.delete(base);
-  g.estado = "fila"; g.etapa = null;
+  g.estado = "fila"; g.etapa = null; g.prioridade = 0;
   await db.gravacoes.salvar(g);
   mudou();
   rodarFila();
@@ -132,7 +138,9 @@ function rodarFila() {
 
 async function processarFila() {
   for (;;) {
-    const fila = (await db.gravacoes.todas()).filter((g) => g.estado === "fila").sort((a, b) => a.inicio.localeCompare(b.inicio));
+    // "Primeiro" dá prioridade; no resto, a ordem de chegada
+    const fila = (await db.gravacoes.todas()).filter((g) => g.estado === "fila")
+      .sort((a, b) => (b.prioridade || 0) - (a.prioridade || 0) || a.inicio.localeCompare(b.inicio));
     if (!fila.length) return;
     await transcreverUma(fila[0]);
   }
@@ -152,6 +160,9 @@ async function transcreverUma(g) {
     await motor.preparar(p, ({ carregado, total }) => total && etapa(g, `baixando o modelo ${Math.round((carregado / total) * 100)}%`).catch(() => {}));
     const lista = Object.entries(g.faixas || {});
     const resultado = [];
+    // Pausada antes? Retoma do que ficou guardado, se o modelo e o idioma forem os mesmos.
+    const chaveParcial = `${cfg.modelo}|${cfg.idioma}`;
+    if (g.parcial?.chave !== chaveParcial) g.parcial = { chave: chaveParcial, faixas: {} };
     for (let i = 0; i < lista.length; i++) {
       const [nome, chave] = lista[i];
       if (cancelado()) throw new Error("cancelado");
@@ -164,7 +175,10 @@ async function transcreverUma(g) {
       const frases = await motor.transcreverFaixa(audio, cfg.idioma, (fr) => {
         const pct = Math.round(fr * 100);
         if (pct - ultimo >= 2 || pct === 100) { ultimo = pct; etapa(g, `${i + 1}/${lista.length} transcrevendo ${rot} ${pct}%`).catch(() => {}); }
-      }, cancelado);
+      }, cancelado, g.parcial.faixas[nome], async (de) => {
+        g.parcial.faixas[nome] = { ...de, pct: Math.round((de.ate / audio.length) * 100), rot };
+        await db.gravacoes.salvar(g);
+      });
       resultado.push({ quem, frases });
     }
     const d = new Date(g.inicio);
@@ -172,14 +186,21 @@ async function transcreverUma(g) {
     const atual = await precisa(base);
     atual.texto = motor.montarMd(titulo, resultado);
     atual.falantes = resultado.filter((r) => r.frases.length).map((r) => r.quem);
-    atual.estado = "pronta"; atual.etapa = null;
+    atual.estado = "pronta"; atual.etapa = null; delete atual.parcial;
     await db.gravacoes.salvar(atual);
     mudou();
     if (cfg.resumo.ativo && db.chaveApi.ler()) resumir(base).catch(() => {});
   } catch (e) {
     const atual = await db.gravacoes.uma(base);
     if (atual) {
-      atual.estado = "sem"; atual.etapa = null;
+      // pausar guarda o progresso: fica "pausada" (ou volta para a fila, se outra passou na frente)
+      const feito = Object.values(atual.parcial?.faixas || {}).filter((x) => x.frases);
+      // "já tem sua voz e 40% dos outros"
+      const inteira = { "você": "sua voz", "os outros": "a voz dos outros", "o áudio": "o áudio" };
+      const parte = { "você": "da sua voz", "os outros": "dos outros", "o áudio": "do áudio" };
+      atual.etapa = feito.length ? "já tem " + feito.map((x) => (x.pct >= 100 ? inteira[x.rot] : `${x.pct}% ${parte[x.rot]}`)).join(" e ") : null;
+      atual.estado = voltarParaFila.has(base) ? "fila" : feito.length ? "pausada" : "sem";
+      if (voltarParaFila.has(base)) { atual.prioridade = voltarParaFila.get(base); voltarParaFila.delete(base); }
       if (!cancelado() && e.message !== "cancelado") atual.erro = e.message;
       await db.gravacoes.salvar(atual);
       mudou();
@@ -196,8 +217,27 @@ async function cancelar(base) {
   canal.postMessage({ tipo: "cancelar", base });
   if (emAndamento === base) motor.abortar();
   const g = await db.gravacoes.uma(base);
-  if (g && g.estado === "fila") { g.estado = "sem"; await db.gravacoes.salvar(g); }
+  if (g && g.estado === "fila") { g.estado = g.parcial ? "pausada" : "sem"; await db.gravacoes.salvar(g); }
   mudou();
+}
+
+// "Transcrever esta primeiro": pausa a que está rodando (ela volta logo depois, de onde parou).
+async function priorizar(base) {
+  const g = await precisa(base);
+  if (g.estado === "transcrevendo") return;
+  const agora = Date.now();
+  g.estado = "fila"; g.prioridade = agora;
+  await db.gravacoes.salvar(g);
+  const rodando = (await db.gravacoes.todas()).find((x) => x.estado === "transcrevendo");
+  if (rodando) {
+    cancelados.add(rodando.base);
+    voltarParaFila.set(rodando.base, agora - 1);
+    canal.postMessage({ tipo: "cancelar", base: rodando.base, voltar: agora - 1 });
+    if (emAndamento === rodando.base) motor.abortar();
+  }
+  mudou();
+  rodarFila();
+  canal.postMessage({ tipo: "fila" });
 }
 
 // Abriu a página e nenhuma aba está transcrevendo: o que ficou "transcrevendo" morreu com a aba.
@@ -241,7 +281,7 @@ async function resumir(base) {
     if (!dados) throw new Error("O Claude não devolveu o resumo.");
     const atual = await precisa(base);
     atual.resumoDados = { ...dados, gerado_em: new Date().toISOString(), modelo: j.model || MODELO_RESUMO };
-    atual.resumo = { estado: "pronto", veredito: dados.veredito, precisaAgir: dados.precisa_agir, acoes: dados.acoes?.length || 0 };
+    atual.resumo = { estado: "pronto", veredito: dados.veredito, precisaAgir: dados.precisa_agir, acoes: dados.acoes?.length || 0, feitas: 0 };
     await db.gravacoes.salvar(atual);
   } catch (e) {
     const atual = await db.gravacoes.uma(base);
@@ -301,6 +341,16 @@ const comandos = {
   importar: ({ arquivo }) => importar(arquivo),
   transcrever: ({ base }) => transcrever(base),
   cancelar: ({ base }) => cancelar(base),
+  priorizar: ({ base }) => priorizar(base),
+  async marcarAcao({ base, i, feita }) {
+    const g = await precisa(base);
+    const a = g.resumoDados?.acoes?.[i];
+    if (!a) throw new Error("Ação não encontrada.");
+    a.feita = !!feita;
+    if (g.resumo) g.resumo.feitas = g.resumoDados.acoes.filter((x) => x.feita).length;
+    await db.gravacoes.salvar(g);
+    mudou();
+  },
   async excluir({ base }) {
     const g = await precisa(base);
     for (const k of Object.values(g.faixas || {})) await db.audios.apagar(k);

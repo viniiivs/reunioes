@@ -128,11 +128,13 @@ function rms(a, ini, fim) {
 
 /**
  * Transcreve uma faixa. aoAvancar(fracao 0..1). cancelado() => true para parar.
+ * Retomada: `de` = { ate (amostra onde parou), frases (já prontas) }; aoGuardar(de) é chamado a cada
+ * janela pronta, para pausar sem perder o que já foi feito.
  * Devolve [{ini, fim, texto}] em segundos desde o início da faixa.
  */
-export async function transcreverFaixa(audio, idioma, aoAvancar, cancelado) {
-  const frases = [];
-  for (let ini = 0; ini < audio.length; ini += JANELA) {
+export async function transcreverFaixa(audio, idioma, aoAvancar, cancelado, de = null, aoGuardar = null) {
+  const frases = [...(de?.frases || [])];
+  for (let ini = de?.ate || 0; ini < audio.length; ini += JANELA) {
     if (cancelado()) throw new Error("cancelado");
     const fim = Math.min(audio.length, ini + JANELA);
     if (fim - ini > 16000 / 2 && rms(audio, ini, fim) > SILENCIO) {
@@ -141,6 +143,7 @@ export async function transcreverFaixa(audio, idioma, aoAvancar, cancelado) {
       const off = ini / 16000;
       for (const f of r.frases) frases.push({ ini: off + f.ini, fim: off + f.fim, texto: f.texto });
     }
+    await aoGuardar?.({ ate: fim, frases });
     aoAvancar(fim / audio.length);
   }
   return limpar(frases);

@@ -108,16 +108,21 @@ function desenharResumo() {
 
   const r = resumo;
   const quando = r.gerado_em ? new Date(r.gerado_em) : null;
-  const acoes = (r.acoes || []).map((a) => {
+  const lista = r.acoes || [];
+  const feitas = lista.filter((a) => a.feita).length;
+  const tudoFeito = lista.length > 0 && feitas === lista.length;
+  const acoes = lista.map((a, i) => {
     const meta = [a.pedido_por ? `Pedido por ${f.esc(a.pedido_por)}` : null, a.prazo ? `Prazo: ${f.esc(a.prazo)}` : null].filter(Boolean);
-    return `<li><b>${f.esc(a.acao)}</b><small>${meta.join(". ")}${meta.length ? ". " : ""}${a.tempo ? `Trecho em <button class="tempo-link" data-tempo="${f.esc(a.tempo)}">${f.esc(a.tempo)}</button>` : ""}</small></li>`;
+    return `<li class="${a.feita ? "feita" : ""}"><button class="marcar" role="checkbox" aria-checked="${!!a.feita}" data-marcar="${i}" title="${a.feita ? "Marcar como não feita" : "Marcar como feita"}" aria-label="Feita: ${f.esc(a.acao)}"><i class="ph ph-check" aria-hidden="true"></i></button><b>${f.esc(a.acao)}</b><small>${meta.join(". ")}${meta.length ? ". " : ""}${a.tempo ? `Trecho em <button class="tempo-link" data-tempo="${f.esc(a.tempo)}">${f.esc(a.tempo)}</button>` : ""}</small></li>`;
   }).join("");
 
   painelResumo.innerHTML = `
-    <div class="veredito-topo${r.precisa_agir ? " agir" : ""}">
-      <i class="ph ${r.precisa_agir ? "ph-flag" : "ph-check-circle"}" aria-hidden="true"></i>
+    <div class="veredito-topo${r.precisa_agir && !tudoFeito ? " agir" : ""}">
+      <i class="ph ${r.precisa_agir && !tudoFeito ? "ph-flag" : "ph-check-circle"}" aria-hidden="true"></i>
       <div><strong>${f.esc(r.veredito)}</strong>
-      <span>${r.precisa_agir ? "Segundo o Claude, você precisa agir." : "Segundo o Claude, nada depende de você."}</span></div>
+      <span>${!r.precisa_agir ? "Segundo o Claude, nada depende de você."
+        : lista.length && feitas === lista.length ? "Você marcou tudo como feito."
+        : feitas ? `Segundo o Claude, você precisa agir. ${feitas} de ${lista.length} feitas.` : "Segundo o Claude, você precisa agir."}</span></div>
     </div>
     ${acoes ? `<h2>O que você precisa fazer</h2><ol class="acoes-lista">${acoes}</ol>` : ""}
     ${r.atencao?.length ? `<h2>Fique sabendo</h2><ul>${r.atencao.map((x) => `<li>${f.esc(x)}</li>`).join("")}</ul>` : ""}
@@ -129,6 +134,8 @@ function desenharResumo() {
 }
 
 painelResumo.addEventListener("click", async (e) => {
+  const m = e.target.closest("[data-marcar]");
+  if (m) return marcar(+m.dataset.marcar);
   const t = e.target.closest("[data-tempo]");
   if (t) return irPara(t.dataset.tempo);
   const b = e.target.closest("[data-acao=resumir]");
@@ -141,6 +148,17 @@ painelResumo.addEventListener("click", async (e) => {
     desenharResumo();
   } catch (err) { b.disabled = false; avisar(err.message); }
 });
+
+// Marca na hora e grava em seguida; se falhar, desfaz e avisa.
+async function marcar(i) {
+  const a = resumo?.acoes?.[i];
+  if (!a) return;
+  a.feita = !a.feita;
+  desenharResumo();
+  painelResumo.querySelector(`[data-marcar="${i}"]`)?.focus();
+  try { await chamar("marcarAcao", { base, i, feita: a.feita }); }
+  catch (err) { a.feita = !a.feita; desenharResumo(); avisar(err.message); }
+}
 
 // Pula para o trecho citado numa acao e pisca a fala.
 function irPara(tempo) {
