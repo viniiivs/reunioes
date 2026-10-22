@@ -26,6 +26,11 @@ function abrirAba(qual) {
   $("#aba-texto").setAttribute("aria-selected", String(!resumoAtivo));
   $("#painel-resumo").hidden = !resumoAtivo;
   $("#painel-texto").hidden = resumoAtivo;
+  botaoCopiarResumo();
+}
+// o Copiar do topo é do resumo; a transcrição tem o dela na barra de busca
+function botaoCopiarResumo() {
+  $("#copiar-resumo").hidden = !resumo || $("#aba-resumo").getAttribute("aria-selected") !== "true";
 }
 $("#aba-resumo").addEventListener("click", () => abrirAba("resumo"));
 $("#aba-texto").addEventListener("click", () => abrirAba("texto"));
@@ -84,6 +89,7 @@ aoMudar((m) => {
 // ---------------------------------------------------------------- resumo
 
 function desenharResumo() {
+  botaoCopiarResumo();
   const est = estadoResumo?.estado;
   if (est === "gerando" || est === "fila") {
     painelResumo.innerHTML = `
@@ -239,11 +245,41 @@ $("#pessoas").addEventListener("click", (e) => {
   desenhar();
 });
 
-$("#copiar").addEventListener("click", async () => {
-  const txt = falas.map((x) => `[${x.tempo}] ${rotulo(x.quem)}: ${x.diz}`).join("\n");
-  try { await chamar("copiar", { texto: txt }); avisar("Transcrição copiada."); }
+// Na versão web o leitor fica num quadro: copia daqui mesmo (a área de transferência pede o foco da página).
+async function copiar(texto, msg) {
+  try { await (naWeb ? navigator.clipboard.writeText(texto) : chamar("copiar", { texto })); avisar(msg); }
   catch (e) { avisar(e.message); }
+}
+$("#copiar").addEventListener("click", () =>
+  copiar(falas.map((x) => `[${x.tempo}] ${rotulo(x.quem)}: ${x.diz}`).join("\n"), "Transcrição copiada."));
+
+// Texto simples, para colar em e-mail, chat ou nota: as ações viram uma lista de tarefas.
+$("#copiar-resumo").addEventListener("click", () => {
+  const r = resumo;
+  if (!r) return;
+  const lista = (t, itens) => itens?.length ? [`${t}:`, ...itens, ""] : [];
+  const txt = [
+    $("#titulo").textContent, $("#meta").textContent, "",
+    r.veredito, "",
+    ...lista("O que você precisa fazer", (r.acoes || []).map((a) => {
+      const meta = [a.pedido_por ? `pedido por ${a.pedido_por}` : null, a.prazo ? `prazo: ${a.prazo}` : null, a.tempo ? `em ${a.tempo}` : null].filter(Boolean);
+      return `[${a.feita ? "x" : " "}] ${a.acao}${meta.length ? ` (${meta.join(", ")})` : ""}`;
+    })),
+    ...lista("Fique sabendo", r.atencao?.map((x) => `- ${x}`)),
+    ...lista("Do que se falou", r.resumo?.map((x) => `- ${x}`)),
+  ].join("\n").trim();
+  copiar(txt, "Resumo copiado.");
 });
+
+// ‹ Reuniões: dentro da lista fecha o quadro; aberto sozinho (janela própria) não tem para onde voltar.
+const embutido = window.parent !== window && !!window.parent.fecharLeitor;
+const voltar = () => window.parent.fecharLeitor();
+$("#voltar").hidden = !embutido;
+if (embutido) {
+  $("#voltar").addEventListener("click", voltar);
+  // botão de voltar do mouse: sem preventDefault o navegador também voltaria, duas vezes
+  addEventListener("mouseup", (e) => { if (e.button === 3) { e.preventDefault(); voltar(); } });
+}
 $("#abrir").addEventListener("click", () => chamar("abrirArquivo", { base, ext: "transcricao.md" }).catch((e) => avisar(e.message)));
 $("#pasta").addEventListener("click", () => chamar(naWeb ? "baixar" : "pasta", { base }).catch((e) => avisar(e.message)));
 if (naWeb) {
@@ -257,7 +293,10 @@ if (naWeb) {
 
 document.addEventListener("keydown", (e) => {
   if (e.ctrlKey && e.key.toLowerCase() === "f") { e.preventDefault(); abrirAba("texto"); $("#procura").focus(); $("#procura").select(); }
-  else if (e.key === "Escape" && $("#procura").value) { $("#procura").value = ""; desenhar(); }
+  else if (e.key === "Escape" && !e.target.closest?.(".pessoa-input")) {
+    if ($("#procura").value) { $("#procura").value = ""; desenhar(); }
+    else if (embutido) voltar();
+  }
 });
 
 let tempoAviso;

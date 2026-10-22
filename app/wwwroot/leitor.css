@@ -5,7 +5,17 @@
   min-height: 60px; flex: none; padding: 10px 20px 4px;
   background: var(--surface);
 }
-.titulo { min-width: 0; }
+.titulo { min-width: 0; flex: 1; }
+/* ‹ Reuniões: volta para a lista, como o voltar do celular */
+.voltar-lista {
+  display: inline-flex; align-items: center; gap: 2px; flex: none; align-self: center;
+  margin-left: -10px; padding: 6px 10px 6px 6px; border: 0; border-radius: 8px;
+  background: transparent; color: var(--accent); font: 500 14px var(--font); cursor: pointer;
+}
+.voltar-lista .ph { font-size: 18px; }
+.voltar-lista:hover { background: var(--hover); }
+.voltar-lista:active { transform: scale(0.97); }
+.voltar-lista[hidden], .ferramentas .btn[hidden] { display: none; }
 .titulo h1 { margin: 0; font: 600 17px/1.2 var(--font-display); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .titulo p { margin: 2px 0 0; color: var(--muted); font-size: 13px; }
 .ferramentas { display: flex; align-items: center; gap: 6px; flex: none; }

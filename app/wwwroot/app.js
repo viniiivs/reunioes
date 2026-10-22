@@ -194,7 +194,7 @@ async function agir(acao, g, botao) {
     switch (acao) {
       case "ler":
       case "resumo":
-        return await chamar("abrirLeitor", { base: g.base, titulo: `Reunião de ${titulo(g)}`, aba: acao === "ler" ? "texto" : "resumo" });
+        return abrirLeitor(g.base, acao === "ler" ? "texto" : "resumo");
       case "resumir":
         botao.disabled = true;
         await chamar("resumir", { base: g.base });
@@ -389,6 +389,34 @@ window.fecharConfiguracoes = () => {
 };
 $("#engrenagem").addEventListener("click", () => abrirConfiguracoes());
 addEventListener("keydown", (e) => { if (e.key === "," && e.ctrlKey) { e.preventDefault(); abrirConfiguracoes(); } });
+
+// ---------------------------------------------------------------- resumo e transcrição por cima da lista
+// Cada reunião abre num quadro novo na mesma janela. Entra no histórico: o voltar do mouse, Alt+←
+// e o voltar do navegador/celular (versão web) fecham o leitor em vez de sair do app.
+
+const camadaLeitor = $("#leitor");
+let leitorDe = null;   // base aberta, para devolver o foco à linha ao voltar
+function abrirLeitor(base, aba) {
+  leitorDe = base;
+  camadaLeitor.replaceChildren(Object.assign(document.createElement("iframe"), {
+    title: "Reunião", src: `leitor.html?b=${encodeURIComponent(base)}&aba=${aba}`,
+  }));
+  camadaLeitor.hidden = false;
+  requestAnimationFrame(() => camadaLeitor.classList.add("aberta"));
+  camadaLeitor.firstChild.addEventListener("load", () => camadaLeitor.firstChild?.contentWindow.focus(), { once: true });
+  if (history.state?.leitor) history.replaceState({ leitor: base }, "");
+  else history.pushState({ leitor: base }, "");
+}
+function esconderLeitor() {
+  if (camadaLeitor.hidden) return;
+  camadaLeitor.classList.remove("aberta");
+  setTimeout(() => { camadaLeitor.hidden = true; camadaLeitor.replaceChildren(); }, 160);
+  const linha = [...linhas.querySelectorAll(".linha")].find((l) => l.dataset.base === leitorDe);
+  (linha?.querySelector("[data-acao=ler]") || filtro).focus();
+}
+window.fecharLeitor = () => (history.state?.leitor ? history.back() : esconderLeitor());
+addEventListener("popstate", () => { if (!history.state?.leitor) esconderLeitor(); });
+if (history.state?.leitor) history.replaceState(null, "");   // recarregou com o leitor aberto: começa na lista
 
 lerEstado();
 setInterval(lerEstado, 3000);
