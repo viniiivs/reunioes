@@ -125,6 +125,7 @@ function estado(g) {
     case "pronta": return `<span class="estado pronta"><i class="ph ph-check" aria-hidden="true"></i>Transcrita</span>`;
     case "transcrevendo": return `<span class="estado transcrevendo" title="${f.esc(g.etapa || "")}"><i class="ph ph-circle-notch girando" aria-hidden="true"></i><span class="etapa">${f.esc(etapaCurta(g.etapa))}</span></span>`;
     case "fila": return `<span class="estado fila"><i class="ph ph-hourglass" aria-hidden="true"></i>Na fila</span>`;
+    case "pausada": return `<span class="estado pausada" title="Continua de onde parou${g.etapa ? ` (${f.esc(g.etapa)})` : ""}"><i class="ph ph-pause-circle" aria-hidden="true"></i>Pausada</span>`;
     case "gravando": return `<span class="estado gravando"><i class="ph ph-record" aria-hidden="true"></i>Gravando agora</span>`;
     case "incompleta": return `<span class="estado incompleta" title="O gravador foi interrompido e o arquivo FLAC ficou sem o fim. Precisa ser reparado antes de transcrever."><i class="ph ph-warning" aria-hidden="true"></i>Áudio incompleto</span>`;
     default: return `<span class="estado sem">Não transcrita</span>`;
@@ -141,9 +142,17 @@ function paraVoce(g) {
     case "gerando": return `<span class="veredito espera"><i class="ph ph-circle-notch girando" aria-hidden="true"></i>Resumindo…</span>`;
     case "fila": return `<span class="veredito espera"><i class="ph ph-hourglass" aria-hidden="true"></i>Na fila do resumo</span>`;
     case "erro": return `<button class="link erro" data-acao="resumir" title="${f.esc(r.erro || "")}"><i class="ph ph-warning" aria-hidden="true"></i>Resumo falhou, tentar de novo</button>`;
-    default: return r.precisaAgir
-      ? `<button class="veredito agir" data-acao="resumo" title="${f.esc(r.veredito)}"><i class="ph ph-flag" aria-hidden="true"></i><span>${f.esc(r.veredito)}</span></button>`
-      : `<button class="veredito nada" data-acao="resumo" title="${f.esc(r.veredito)}"><i class="ph ph-check-circle" aria-hidden="true"></i><span>${f.esc(r.veredito)}</span></button>`;
+    default: {
+      // ações marcadas como feitas no leitor: tudo feito vira verde; parte feita mostra a conta
+      const feitas = r.feitas || 0, total = r.acoes || 0;
+      if (r.precisaAgir && total && feitas >= total)
+        return `<button class="veredito nada" data-acao="resumo" title="${f.esc(r.veredito)}"><i class="ph ph-check-circle" aria-hidden="true"></i><span>Tudo feito · ${f.esc(r.veredito)}</span></button>`;
+      if (r.precisaAgir && feitas)
+        return `<button class="veredito agir" data-acao="resumo" title="${f.esc(r.veredito)}\n${feitas} de ${total} feitas"><i class="ph ph-flag" aria-hidden="true"></i><span>${f.esc(r.veredito)}</span><small class="feitas">${feitas}/${total}</small></button>`;
+      return r.precisaAgir
+        ? `<button class="veredito agir" data-acao="resumo" title="${f.esc(r.veredito)}"><i class="ph ph-flag" aria-hidden="true"></i><span>${f.esc(r.veredito)}</span></button>`
+        : `<button class="veredito nada" data-acao="resumo" title="${f.esc(r.veredito)}"><i class="ph ph-check-circle" aria-hidden="true"></i><span>${f.esc(r.veredito)}</span></button>`;
+    }
   }
 }
 
@@ -157,7 +166,9 @@ function etapaCurta(e) {
 function acoes(g) {
   let principal;
   if (g.estado === "pronta") principal = `<button class="btn" data-acao="ler"><i class="ph ph-file-text acento" aria-hidden="true"></i> Ler</button>`;
-  else if (g.estado === "transcrevendo" || g.estado === "fila") principal = `<button class="btn" data-acao="cancelar"><i class="ph ph-x" aria-hidden="true"></i> Cancelar</button>`;
+  else if (g.estado === "transcrevendo") principal = `<button class="btn" data-acao="cancelar" title="Pausa e guarda o que já ficou pronto"><i class="ph ph-pause" aria-hidden="true"></i> Pausar</button>`;
+  else if (g.estado === "fila") principal = `<button class="btn" data-acao="priorizar" title="Transcrever esta agora: pausa a que está rodando e retoma depois"><i class="ph ph-arrow-line-up" aria-hidden="true"></i> Primeiro</button>`;
+  else if (g.estado === "pausada") principal = `<button class="btn" data-acao="transcrever" title="Continua de onde parou${g.etapa ? ` (${f.esc(g.etapa)})` : ""}"><i class="ph ph-play" aria-hidden="true"></i> Continuar</button>`;
   else if (g.estado === "sem") principal = `<button class="btn" data-acao="transcrever"><i class="ph ph-waveform" aria-hidden="true"></i> Transcrever</button>`;
   else principal = `<button class="btn" disabled><i class="ph ph-waveform" aria-hidden="true"></i> Transcrever</button>`;
   const ocupada = g.estado === "gravando" || g.estado === "transcrevendo" || g.estado === "fila";
@@ -166,7 +177,9 @@ function acoes(g) {
     ${naWeb
       ? `<button class="btn icone" data-acao="baixar" title="Baixar o áudio e a transcrição" aria-label="Baixar o áudio e a transcrição"><i class="ph ph-download-simple" aria-hidden="true"></i></button>`
       : `<button class="btn icone" data-acao="pasta" title="Mostrar os arquivos na pasta" aria-label="Mostrar os arquivos na pasta"><i class="ph ph-folder-open" aria-hidden="true"></i></button>`}
-    <button class="btn icone perigo-hover" data-acao="excluir" ${ocupada ? "disabled" : ""} title="${ocupada ? "Não dá para excluir agora" : naWeb ? "Excluir" : "Excluir (vai para a Lixeira)"}" aria-label="Excluir gravação"><i class="ph ph-trash" aria-hidden="true"></i></button>`;
+    ${g.estado === "fila"
+      ? `<button class="btn icone" data-acao="cancelar" title="Tirar da fila" aria-label="Tirar da fila"><i class="ph ph-x" aria-hidden="true"></i></button>`
+      : `<button class="btn icone perigo-hover" data-acao="excluir" ${ocupada ? "disabled" : ""} title="${ocupada ? "Não dá para excluir agora" : naWeb ? "Excluir" : "Excluir (vai para a Lixeira)"}" aria-label="Excluir gravação"><i class="ph ph-trash" aria-hidden="true"></i></button>`}`;
 }
 
 // ---------------------------------------------------------------- acoes
@@ -189,12 +202,22 @@ async function agir(acao, g, botao) {
       case "transcrever":
         botao.disabled = true;
         await chamar("transcrever", { base: g.base });
-        avisar(`Transcrição de ${titulo(g)} começou. Leva mais ou menos o tempo do áudio.`);
+        avisar(dados.some((x) => x.estado === "transcrevendo" && x.base !== g.base)
+          ? `${titulo(g)} entrou na fila. Para passar na frente, clique em Primeiro.`
+          : g.estado === "pausada" ? `Continuando a transcrição de ${titulo(g)} de onde parou.` : `Transcrição de ${titulo(g)} começou. Leva mais ou menos o tempo do áudio.`);
         return carregar();
       case "cancelar":
         botao.disabled = true;
         await chamar("cancelar", { base: g.base });
+        if (g.estado === "transcrevendo") avisar(`Transcrição de ${titulo(g)} pausada. O que já ficou pronto está guardado: Continuar retoma dali.`);
         return carregar();
+      case "priorizar": {
+        botao.disabled = true;
+        const rodando = dados.find((x) => x.estado === "transcrevendo" && x.base !== g.base);
+        await chamar("priorizar", { base: g.base });
+        avisar(rodando ? `Transcrevendo ${titulo(g)} agora. A de ${titulo(rodando)} foi pausada e continua logo depois.` : `Transcrevendo ${titulo(g)} agora.`);
+        return carregar();
+      }
       case "pasta":
         return await chamar("pasta", { base: g.base });
       case "baixar":

@@ -191,3 +191,8 @@ dialog p { margin: 0 0 20px; color: var(--muted); }
    longo ficam no próprio botão (max-width + span com ellipsis). */
 .cel.cel-botao { overflow: visible; }
 .cel-botao .veredito, .cel-botao .link { max-width: calc(100% + 8px); }
+
+/* transcrição pausada e ações feitas */
+.estado.pausada { color: var(--muted); }
+.veredito .feitas { flex: none; margin-left: 2px; padding: 0 6px; border-radius: 999px; background: var(--surface-2); color: var(--muted); font-size: 11px; font-weight: 600; font-variant-numeric: tabular-nums; }
+
