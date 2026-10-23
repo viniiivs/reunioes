@@ -21,7 +21,8 @@ public record Gravacao(
     App[]? Apps,             // apps que tocaram som durante a gravacao
     Resumo? Resumo,
     string? Auto,            // app que fez o servico comecar a gravar (null = gravacao manual)
-    bool Vozes);             // tem .falantes.json (da para nomear as vozes)
+    bool Vozes,              // tem .falantes.json (da para nomear as vozes)
+    int? Pct = null);        // transcrevendo: quanto da transcricao inteira ja foi (0-99); null = preparando
 
 /// <summary>Resumo da IA: estado gerando | fila | pronto | erro.</summary>
 public record Resumo(string Estado, string? Veredito, bool? PrecisaAgir, int? Acoes, string? Erro, int? Feitas = null);
@@ -89,6 +90,7 @@ public sealed class Gravacoes
     static readonly Regex reNome = new(@"^(\d{4})-(\d\d)-(\d\d)_(\d\d)-(\d\d)");
     static readonly Regex reFalante = new(@"^\*\*\[\d\d:\d\d:\d\d\] (.+?):\*\*", RegexOptions.Multiline);
     static readonly Regex reEtapa = new(@"\[(\d)/(\d)\] ([^\r\n]+)");
+    static readonly Regex rePct = new(@"\[pct\] (\d+)");
 
     record Proc(int Pid, string Linha);
 
@@ -197,9 +199,9 @@ public sealed class Gravacoes
             }
             catch (Exception) { }
 
-            string estado; string? etapa = null;
+            string estado; string? etapa = null; int? pct = null;
             if (!fechada && gravando.Contains(b)) estado = "gravando";
-            else if (rodando == b || externos.Any(p => Cita(p.Linha, b))) { estado = "transcrevendo"; etapa = Etapa(b); }
+            else if (rodando == b || externos.Any(p => Cita(p.Linha, b))) { estado = "transcrevendo"; (etapa, pct) = Etapa(b); }
             else if (filaAgora.Contains(b)) estado = "fila";
             else if (falantes != null) estado = "pronta";
             else if (Pausada(b) is { } feito) { estado = "pausada"; etapa = feito; }
@@ -216,7 +218,7 @@ public sealed class Gravacoes
             }
 
             lista.Add(new Gravacao(b, inicio, duracao, bytes, estado, etapa, falantes, apps,
-                falantes != null ? EstadoResumo(b) : null, auto, File.Exists(Caminho(b, "falantes.json"))));
+                falantes != null ? EstadoResumo(b) : null, auto, File.Exists(Caminho(b, "falantes.json")), pct));
         }
         return lista.OrderByDescending(g => g.Inicio, StringComparer.Ordinal).ToList();
     }
@@ -288,18 +290,22 @@ public sealed class Gravacoes
         return r.ReadToEnd();
     }
 
-    string? Etapa(string b)
+    /// <summary>Etapa ("2/3 transcrevendo os outros") e porcentagem da transcricao inteira, pelo log do motor.</summary>
+    (string? Etapa, int? Pct) Etapa(string b)
     {
         var log = Caminho(b, "log");
-        if (!File.Exists(log)) return null;
+        if (!File.Exists(log)) return (null, null);
         try
         {
-            var ms = reEtapa.Matches(LerCompartilhado(log));
-            if (ms.Count == 0) return "carregando modelos";
+            var txt = LerCompartilhado(log);
+            var ms = reEtapa.Matches(txt);
+            var ps = rePct.Matches(txt);
+            int? pct = ps.Count > 0 ? int.Parse(ps[^1].Groups[1].Value) : null;
+            if (ms.Count == 0) return ("carregando modelos", pct);
             var m = ms[^1];
-            return $"{m.Groups[1].Value}/{m.Groups[2].Value} {m.Groups[3].Value.Trim()}";
+            return ($"{m.Groups[1].Value}/{m.Groups[2].Value} {m.Groups[3].Value.Trim()}", pct);
         }
-        catch (IOException) { return null; }
+        catch (IOException) { return (null, null); }
     }
 
     /// <summary>Duracao pelo STREAMINFO do FLAC. Total de amostras 0 = arquivo nao finalizado.</summary>

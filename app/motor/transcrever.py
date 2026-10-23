@@ -43,8 +43,35 @@ def liberar():
         torch.cuda.empty_cache()
 
 
-def asr(audio, modelo, device, idioma):
-    """Transcreve + alinha palavra a palavra. Tenta float16 e cai para int8 se a GPU reclamar."""
+class Progresso:
+    """Porcentagem da transcricao inteira (todas as etapas), para a lista mostrar "Transcrevendo 42%".
+    Cada etapa pesa o quanto costuma demorar; etapa ja pronta (retomada) conta como feita.
+    Imprime "[pct] N" so quando o numero sobe."""
+
+    def __init__(self, pesos):
+        self.total, self.feito, self.ultimo = sum(pesos), 0.0, -1
+
+    def etapa(self, peso):
+        """Reserva o peso da etapa e devolve o callback dela, que recebe a fracao feita (0 a 1)."""
+        ini = self.feito
+        self.feito += peso
+        return lambda f: self._mostrar(ini + peso * min(max(f, 0.0), 1.0))
+
+    def _mostrar(self, v):
+        n = min(99, int(v / self.total * 100))   # 100 so quando o arquivo final estiver escrito
+        if n > self.ultimo:
+            self.ultimo = n
+            print(f"[pct] {n}", flush=True)
+
+
+PESO_ASR, PESO_VOZES = 1.0, 0.5   # cada canal transcrito; separar as vozes (pyannote) leva cerca da metade
+FATIA_ALINHAR = 0.2               # dentro de uma transcricao: 80% reconhecer a fala, 20% alinhar as palavras
+
+
+def asr(audio, modelo, device, idioma, avancar=lambda f: None):
+    """Transcreve + alinha palavra a palavra. Tenta float16 e cai para int8 se a GPU reclamar.
+    avancar(f) recebe o andamento desta transcricao, de 0 a 1."""
+    avancar(0)
     tipos = ("float16", "int8_float16", "int8") if device == "cuda" else ("int8",)
     r = None
     for i, ct in enumerate(tipos):
@@ -52,7 +79,8 @@ def asr(audio, modelo, device, idioma):
         try:
             m = whisperx.load_model(modelo, device, compute_type=ct, language=idioma,
                                     asr_options={"beam_size": 5})
-            r = m.transcribe(audio, batch_size=8 if device == "cuda" else 4, language=idioma)
+            r = m.transcribe(audio, batch_size=8 if device == "cuda" else 4, language=idioma,
+                             progress_callback=lambda p: avancar(p / 100 * (1 - FATIA_ALINHAR)))
             print(f"  [asr] {modelo} / {device} / {ct}", flush=True)
             break
         except Exception as e:  # noqa: BLE001
@@ -64,11 +92,13 @@ def asr(audio, modelo, device, idioma):
             liberar()
     try:
         al, meta = whisperx.load_align_model(language_code=idioma, device=device, model_name=comum.alinhamento_local(idioma))
-        r = whisperx.align(r["segments"], al, meta, audio, device, return_char_alignments=False)
+        r = whisperx.align(r["segments"], al, meta, audio, device, return_char_alignments=False,
+                           progress_callback=lambda p: avancar(1 - FATIA_ALINHAR + p / 100 * FATIA_ALINHAR))
         del al
     except Exception as e:  # noqa: BLE001  (idioma sem modelo de alinhamento: fica sem tempo por palavra)
         print(f"  [aviso] sem alinhamento por palavra: {str(e).splitlines()[0][:100]}", flush=True)
     liberar()
+    avancar(1)
     return r
 
 
@@ -143,34 +173,42 @@ def main():
     etapas = 3 if separar else 2
 
     chave = {"modelo": modelo, "idioma": idioma}
+    tem_eu = os.path.exists(arq_eu)
+    prog = Progresso([PESO_ASR] * (2 if tem_eu else 1) + ([PESO_VOZES] if separar else []))
     falas = []  # (inicio, fim, quem, texto)
-    if os.path.exists(arq_eu):
+    if tem_eu:
+        avancar = prog.etapa(PESO_ASR)
         eu = ler_parcial(base, "eu", chave)
         if eu is None:
             print(f"[1/{etapas}] transcrevendo seu microfone", flush=True)
-            r = asr(whisperx.load_audio(arq_eu), modelo, device, idioma)
+            r = asr(whisperx.load_audio(arq_eu), modelo, device, idioma, avancar)
             eu = [[s["start"], s["end"], s["text"].strip()] for s in r["segments"]]
             salvar_parcial(base, "eu", chave, eu)
         else:
             print(f"[1/{etapas}] seu microfone (ja estava pronto)", flush=True)
+            avancar(1)
         falas += [(i, e, "Eu", t) for i, e, t in eu]
 
     audio = whisperx.load_audio(arq_outros)
+    avancar = prog.etapa(PESO_ASR)
     r = ler_parcial(base, "outros", chave)
     if r is None:
         print(f"[2/{etapas}] transcrevendo os outros", flush=True)
-        r = asr(audio, modelo, device, idioma)
+        r = asr(audio, modelo, device, idioma, avancar)
         salvar_parcial(base, "outros", chave, r)
     else:
         print(f"[2/{etapas}] os outros (ja estava pronto)", flush=True)
+        avancar(1)
 
     nomes, emb = {}, {}
     if separar:
         print(f"[3/{etapas}] separando as vozes", flush=True)
+        avancar = prog.etapa(PESO_VOZES)
+        avancar(0)
         from whisperx.diarize import DiarizationPipeline
         dz = DiarizationPipeline(token=token, device=device, cache_dir=os.environ.get("HF_HOME"))
         kw = {"num_speakers": a.falantes} if a.falantes else {}
-        df, emb = dz(audio, return_embeddings=True, **kw)
+        df, emb = dz(audio, return_embeddings=True, progress_callback=lambda p: avancar(p / 100), **kw)
         del dz
         liberar()
         r = whisperx.assign_word_speakers(df, r)
