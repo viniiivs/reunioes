@@ -123,7 +123,12 @@ function linha(g, d) {
 function estado(g) {
   switch (g.estado) {
     case "pronta": return `<span class="estado pronta"><i class="ph ph-check" aria-hidden="true"></i>Transcrita</span>`;
-    case "transcrevendo": return `<span class="estado transcrevendo" title="${f.esc(g.etapa || "")}"><i class="ph ph-circle-notch girando" aria-hidden="true"></i><span class="etapa">${f.esc(etapaCurta(g.etapa))}</span></span>`;
+    case "transcrevendo": {
+      const p = progresso(g);
+      return `<span class="estado transcrevendo" title="${f.esc(p.detalhe)}"><i class="ph ph-circle-notch girando" aria-hidden="true"></i>
+        <span class="progresso"><span class="etapa">${f.esc(p.txt)}</span>
+        <span class="barra${p.pct == null ? " indeterminada" : ""}" role="progressbar" aria-label="Transcrição" aria-valuemin="0" aria-valuemax="100"${p.pct != null ? ` aria-valuenow="${p.pct}"` : ""}><i${p.pct != null ? ` style="transform:scaleX(${p.pct / 100})"` : ""}></i></span></span></span>`;
+    }
     case "fila": return `<span class="estado fila"><i class="ph ph-hourglass" aria-hidden="true"></i>Na fila</span>`;
     case "pausada": return `<span class="estado pausada" title="Continua de onde parou${g.etapa ? ` (${f.esc(g.etapa)})` : ""}"><i class="ph ph-pause-circle" aria-hidden="true"></i>Pausada</span>`;
     case "gravando": return `<span class="estado gravando"><i class="ph ph-record" aria-hidden="true"></i>Gravando agora</span>`;
@@ -156,11 +161,15 @@ function paraVoce(g) {
   }
 }
 
-function etapaCurta(e) {
-  if (!e) return "Transcrevendo";
+// "Transcrevendo 42%" da transcrição inteira (o motor soma as etapas); a etapa vai para o title.
+function progresso(g) {
+  const e = g.etapa || "";
+  const baixando = e.match(/^baixando o modelo (\d+)%/);
+  if (baixando) return { txt: `Baixando o modelo ${baixando[1]}%`, pct: +baixando[1], detalhe: "Baixando o modelo de transcrição (só na primeira vez)" };
   const m = e.match(/^(\d)\/(\d) (.*)$/);
-  if (!m) return e === "carregando modelos" ? "Carregando modelos" : "Transcrevendo";
-  return `Transcrevendo ${m[1]}/${m[2]}`;
+  const detalhe = m ? `Etapa ${m[1]} de ${m[2]}: ${m[3]}` : "Carregando os modelos de transcrição";
+  if (g.pct != null) return { txt: `Transcrevendo ${g.pct}%`, pct: g.pct, detalhe };
+  return { txt: m ? "Transcrevendo" : "Preparando", pct: null, detalhe };
 }
 
 function acoes(g) {

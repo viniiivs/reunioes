@@ -51,7 +51,7 @@ export const noApp = !!wv;
 const hoje = new Date();
 const dia = (d, h, m) => { const x = new Date(hoje); x.setDate(x.getDate() - d); x.setHours(h, m, 0, 0); return x.toISOString(); };
 const exemplo = [
-  { base: "a", inicio: dia(0, 10, 0), duracao: 1712, bytes: 84211000, estado: "transcrevendo", etapa: "2/3 transcrevendo os outros", falantes: null, apps: [{ exe: "zoom.exe", segundos: 1690 }], auto: "Zoom", vozes: false },
+  { base: "a", inicio: dia(0, 10, 0), duracao: 1712, bytes: 84211000, estado: "transcrevendo", etapa: "2/3 transcrevendo os outros", pct: 42, falantes: null, apps: [{ exe: "zoom.exe", segundos: 1690 }], auto: "Zoom", vozes: false },
   { base: "b", inicio: dia(1, 14, 30), duracao: 2290, bytes: 101300000, estado: "pronta", falantes: ["Ana", "Eu", "Bruno", "Falante 3"], apps: null, vozes: true,
     resumo: { estado: "pronto", veredito: "2 ações: revisar a proposta e marcar a demo com a Ana", precisaAgir: true, acoes: 2, feitas: 1 } },
   { base: "c", inicio: dia(2, 9, 15), duracao: 640, bytes: 27100000, estado: "pronta", falantes: ["Outros", "Eu"], apps: null, vozes: false,

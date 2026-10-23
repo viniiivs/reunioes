@@ -108,10 +108,7 @@
 .etapa b { font-weight: 600; font-size: 14px; }
 .etapa.espera b { color: var(--muted); font-weight: 500; }
 .etapa .det { display: block; color: var(--muted); font-size: 12.5px; font-family: var(--mono); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 560px; }
-.barra { height: 4px; border-radius: 2px; background: var(--surface-2); overflow: hidden; margin-top: 8px; max-width: 560px; }
-.barra i { display: block; height: 100%; background: var(--accent); transform-origin: left; transition: transform 300ms ease; }
-.barra.indeterminada i { width: 30%; animation: vai 1.2s ease-in-out infinite; }
-@keyframes vai { from { transform: translateX(-100%); } to { transform: translateX(340%); } }
+.etapa .barra { margin-top: 8px; max-width: 560px; }   /* a barra em si mora no base.css */
 .erro-caixa { margin-top: 16px; padding: 12px 14px; border-radius: 8px; background: var(--danger-soft); color: var(--text); font-size: 13.5px; white-space: pre-wrap; }
 
 /* pronto */
@@ -133,7 +130,6 @@
   .conteudo { padding: 24px 20px 40px; }
   .opcoes { grid-template-columns: 1fr; }
 }
-@media (prefers-reduced-motion: reduce) { .barra.indeterminada i { animation: none; width: 100%; opacity: 0.4; } }
 
 /* linhas de informação (rótulo à esquerda, valor à direita) dentro de um grupo */
 .info { display: flex; justify-content: space-between; align-items: baseline; gap: 24px; font-size: 13.5px; }

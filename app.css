@@ -105,6 +105,10 @@ a.btn { text-decoration: none; }
 .estado.transcrevendo .ph { color: var(--accent); }
 .estado.gravando { color: var(--danger); font-weight: 600; }
 .etapa { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+/* transcrevendo: "Transcrevendo 42%" com a barra embaixo, na largura da coluna */
+.progresso { display: flex; flex-direction: column; gap: 4px; flex: 1; min-width: 0; max-width: 160px; }
+.estado.transcrevendo { width: 100%; }
+.estado.transcrevendo .etapa { font-variant-numeric: tabular-nums; }
 
 /* coluna "Para você" */
 .veredito, .link {

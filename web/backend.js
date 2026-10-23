@@ -123,7 +123,7 @@ async function transcrever(base) {
   const g = await precisa(base);
   if (g.estado === "fila" || g.estado === "transcrevendo") return;
   cancelados.delete(base);
-  g.estado = "fila"; g.etapa = null; g.prioridade = 0;
+  g.estado = "fila"; g.etapa = null; g.pct = null; g.prioridade = 0;
   await db.gravacoes.salvar(g);
   mudou();
   rodarFila();
@@ -146,7 +146,8 @@ async function processarFila() {
   }
 }
 
-async function etapa(g, txt) { g.etapa = txt; await db.gravacoes.salvar(g); mudou(); }
+// pct: quanto da transcrição inteira (todas as faixas) já foi, para a lista mostrar "Transcrevendo 42%"
+async function etapa(g, txt, pct = null) { g.etapa = txt; g.pct = pct; await db.gravacoes.salvar(g); mudou(); }
 
 async function transcreverUma(g) {
   const base = g.base;
@@ -174,7 +175,10 @@ async function transcreverUma(g) {
       let ultimo = 0;
       const frases = await motor.transcreverFaixa(audio, cfg.idioma, (fr) => {
         const pct = Math.round(fr * 100);
-        if (pct - ultimo >= 2 || pct === 100) { ultimo = pct; etapa(g, `${i + 1}/${lista.length} transcrevendo ${rot} ${pct}%`).catch(() => {}); }
+        if (pct - ultimo >= 2 || pct === 100) {
+          ultimo = pct;
+          etapa(g, `${i + 1}/${lista.length} transcrevendo ${rot}`, Math.min(99, Math.floor(((i + fr) / lista.length) * 100))).catch(() => {});
+        }
       }, cancelado, g.parcial.faixas[nome], async (de) => {
         g.parcial.faixas[nome] = { ...de, pct: Math.round((de.ate / audio.length) * 100), rot };
         await db.gravacoes.salvar(g);
@@ -186,7 +190,7 @@ async function transcreverUma(g) {
     const atual = await precisa(base);
     atual.texto = motor.montarMd(titulo, resultado);
     atual.falantes = resultado.filter((r) => r.frases.length).map((r) => r.quem);
-    atual.estado = "pronta"; atual.etapa = null; delete atual.parcial;
+    atual.estado = "pronta"; atual.etapa = null; atual.pct = null; delete atual.parcial;
     await db.gravacoes.salvar(atual);
     mudou();
     if (cfg.resumo.ativo && db.chaveApi.ler()) resumir(base).catch(() => {});
@@ -199,6 +203,7 @@ async function transcreverUma(g) {
       const inteira = { "você": "sua voz", "os outros": "a voz dos outros", "o áudio": "o áudio" };
       const parte = { "você": "da sua voz", "os outros": "dos outros", "o áudio": "do áudio" };
       atual.etapa = feito.length ? "já tem " + feito.map((x) => (x.pct >= 100 ? inteira[x.rot] : `${x.pct}% ${parte[x.rot]}`)).join(" e ") : null;
+      atual.pct = null;
       atual.estado = voltarParaFila.has(base) ? "fila" : feito.length ? "pausada" : "sem";
       if (voltarParaFila.has(base)) { atual.prioridade = voltarParaFila.get(base); voltarParaFila.delete(base); }
       if (!cancelado() && e.message !== "cancelado") atual.erro = e.message;
@@ -249,7 +254,7 @@ async function arrumarOrfas() {
     if (q.held.some((l) => l.name === "reunioes-fila")) return;
   }
   for (const g of presas) {
-    if (g.estado === "transcrevendo") { g.estado = "fila"; g.etapa = null; await db.gravacoes.salvar(g); }
+    if (g.estado === "transcrevendo") { g.estado = "fila"; g.etapa = null; g.pct = null; await db.gravacoes.salvar(g); }
   }
   rodarFila();
 }

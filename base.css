@@ -161,3 +161,11 @@ body { display: flex; flex-direction: column; overflow: hidden; }
   .girando { animation: none; }
   .btn, .aviso { transition: none; }
 }
+
+/* Barra de progresso: instalação do motor (Configurações) e transcrição (lista). Uma só, em todo o app.
+   <span class="barra"><i style="transform:scaleX(.42)"></i></span>; sem número: class="barra indeterminada". */
+.barra { display: block; height: 4px; border-radius: 2px; background: var(--surface-2); overflow: hidden; }
+.barra i { display: block; height: 100%; background: var(--accent); transform-origin: left; transition: transform 300ms ease; }
+.barra.indeterminada i { width: 30%; animation: vai 1.2s ease-in-out infinite; }
+@keyframes vai { from { transform: translateX(-100%); } to { transform: translateX(340%); } }
+@media (prefers-reduced-motion: reduce) { .barra.indeterminada i { animation: none; width: 100%; opacity: 0.4; } }
