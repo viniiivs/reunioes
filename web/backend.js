@@ -318,17 +318,17 @@ async function checar(base, trecho, quem, tempo) {
     try {
       const msgs = [{ role: "user", content: checagem.mensagem(new Date(g.inicio), g.texto, trecho, quem, tempo) }];
       const ferramentas = [
-        { type: "web_search_20250305", name: "web_search", max_uses: 8 },
+        { type: "web_search_20250305", name: "web_search", max_uses: 60 },
         { name: "registrar_checagem", description: "Registra o resultado da checagem.", input_schema: checagem.ESQUEMA },
       ];
       let dados = null;
-      for (let volta = 0; volta < 6 && !dados; volta++) {
+      for (let volta = 0; volta < 15 && !dados; volta++) {
         const forcar = volta > 0 && msgs.at(-1).role === "user" && typeof msgs.at(-1).content === "string" && msgs.at(-1).content.startsWith("Registre");
         const r = await fetch("https://api.anthropic.com/v1/messages", {
           method: "POST",
           headers: { "content-type": "application/json", "x-api-key": chave, "anthropic-version": "2023-06-01", "anthropic-dangerous-direct-browser-access": "true" },
           body: JSON.stringify({
-            model: MODELO_RESUMO, max_tokens: 4096, system: checagem.SISTEMA, tools: ferramentas, messages: msgs,
+            model: MODELO_RESUMO, max_tokens: 16000, system: checagem.SISTEMA, tools: ferramentas, messages: msgs,
             ...(forcar ? { tool_choice: { type: "tool", name: "registrar_checagem" } } : {}),
           }),
         });
