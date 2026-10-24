@@ -46,7 +46,7 @@ public sealed partial class Gravacoes
     public Gravacoes(Func<Config> cfg)
     {
         this.cfg = cfg;
-        relogio = new System.Threading.Timer(_ => Proximo(), null, 5000, 5000);
+        relogio = new System.Threading.Timer(_ => { Proximo(); AvisarAndamento(); }, null, 5000, 5000);
         Vigiar();
     }
 
@@ -83,6 +83,20 @@ public sealed partial class Gravacoes
             ultimoAviso = DateTime.Now;
             Mudou?.Invoke();
         });
+    }
+
+    // O Windows nem sempre avisa que um arquivo aberto cresceu: sem isto a porcentagem parava na
+    // lista enquanto o motor andava. A cada volta do relogio, relê o log de quem esta transcrevendo.
+    string? andamentoVisto;
+    void AvisarAndamento()
+    {
+        string? b;
+        // atualBase: iniciada por este app; vistasTranscrevendo: tambem a que ja rodava quando ele abriu
+        lock (trava) b = atualBase ?? vistasTranscrevendo.FirstOrDefault();
+        var agora = b == null ? null : $"{b} {Etapa(b)}";
+        if (agora == andamentoVisto) return;
+        andamentoVisto = agora;
+        Mudou?.Invoke();
     }
 
     // ------------------------------------------------------------------ listar
@@ -129,6 +143,12 @@ public sealed partial class Gravacoes
     static bool Cita(string linha, string b) => Regex.IsMatch(linha, Regex.Escape(b) + @"(?=[""\s]|$)");
 
     public bool GravandoAgora() => Pythons().Any(p => p.Linha.Contains("gravar.py"));
+
+    public bool TranscrevendoAgora()
+    {
+        lock (trava) if (atualBase != null || fila.Count > 0) return true;
+        return Pythons().Any(p => p.Linha.Contains("transcrever.py"));
+    }
 
     /// <summary>Gravações que um gravar.py está escrevendo agora. O app e o serviço passam o nome na
     /// linha de comando; uma gravação sem .sha256 que nenhum gravador cita ficou de uma sessão
@@ -216,6 +236,7 @@ public sealed partial class Gravacoes
                 lock (trava) viu = vistasTranscrevendo.Remove(b);
                 if (viu && cfg().Resumo.Ativo && !File.Exists(Caminho(b, "resumo.json"))) TentarResumir(b);
             }
+            else lock (trava) vistasTranscrevendo.Remove(b);   // pausada ou voltou para a fila
 
             lista.Add(new Gravacao(b, inicio, duracao, bytes, estado, etapa, falantes, apps,
                 falantes != null ? EstadoResumo(b) : null, auto, File.Exists(Caminho(b, "falantes.json")), pct));
@@ -534,18 +555,14 @@ public sealed partial class Gravacoes
             try { psi = Py("transcrever.py", true); }
             catch (Exception ex) { File.WriteAllText(Caminho(b, "log"), "[erro] " + ex.Message); return; }
             psi.ArgumentList.Add(b);
-            psi.RedirectStandardOutput = true;
-            psi.RedirectStandardError = true;
+            // O motor escreve o proprio log: fechar ou atualizar o app no meio nao corta o andamento.
+            psi.Environment["REUNIOES_LOG"] = Caminho(b, "log");
             var p = Process.Start(psi)!;
             EsquecerProcessos();
-            var log = new StreamWriter(new FileStream(Caminho(b, "log"), FileMode.Create, FileAccess.Write, FileShare.ReadWrite), Encoding.UTF8) { AutoFlush = true };
-            p.OutputDataReceived += (_, e) => { if (e.Data != null) lock (log) log.WriteLine(e.Data); };
-            p.ErrorDataReceived += (_, e) => { if (e.Data != null) lock (log) log.WriteLine(e.Data); };
             p.EnableRaisingEvents = true;
             p.Exited += (_, _) =>
             {
                 p.WaitForExit();
-                lock (log) log.Dispose();
                 lock (trava) { atual = null; atualBase = null; }
                 EsquecerProcessos();
                 if (p.ExitCode == 0 && cfg().Resumo.Ativo && File.Exists(Caminho(b, "transcricao.md")) && !File.Exists(Caminho(b, "resumo.json")))
@@ -553,8 +570,6 @@ public sealed partial class Gravacoes
                 Proximo();
                 Mudou?.Invoke();
             };
-            p.BeginOutputReadLine();
-            p.BeginErrorReadLine();
             atual = p;
             atualBase = b;
         }

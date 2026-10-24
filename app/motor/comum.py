@@ -106,3 +106,17 @@ def utf8_stdout():
     """Saida em UTF-8 mesmo quando o app le pelo pipe (o console do Windows usaria cp1252)."""
     if sys.stdout is not None:
         sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8", errors="replace", line_buffering=True)
+
+
+def log_proprio():
+    """Com REUNIOES_LOG, a saida (inclusive avisos das bibliotecas em C) vai direto para esse arquivo,
+    sem passar pelo app: o log continua andando se o app fechar ou se atualizar no meio."""
+    caminho = os.environ.get("REUNIOES_LOG")
+    if not caminho:
+        return
+    fd = os.open(caminho, os.O_WRONLY | os.O_CREAT | os.O_TRUNC | getattr(os, "O_BINARY", 0))
+    os.dup2(fd, 1)
+    os.dup2(fd, 2)
+    os.close(fd)
+    sys.stdout = open(1, "w", encoding="utf-8", errors="replace", buffering=1, closefd=False)
+    sys.stderr = sys.stdout

@@ -25,6 +25,7 @@ import os
 import comum
 
 comum.utf8_stdout()
+comum.log_proprio()
 LIMIAR = 0.55  # similaridade de cosseno minima para reconhecer uma voz conhecida
 
 import numpy as np  # noqa: E402

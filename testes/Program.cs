@@ -64,6 +64,45 @@ finally
     try { falso.Kill(true); } catch { }   // o py.exe e o python.exe filho
 }
 
+// transcricao: o motor escreve o proprio log (sobrevive ao app fechar) e a lista acompanha a porcentagem
+// sem depender do aviso de arquivo do Windows. Motor falso num venv temporario, sem GPU.
+var motor = Path.Combine(raiz, "_motor");
+Directory.CreateDirectory(Path.Combine(motor, "scripts"));
+System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo("py", new[] { "-m", "venv", "--without-pip", Path.Combine(motor, "venv") }) { CreateNoWindow = true, UseShellExecute = false })!.WaitForExit();
+File.Copy(Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "..", "app", "motor", "comum.py"), Path.Combine(motor, "scripts", "comum.py"));
+File.WriteAllText(Path.Combine(motor, "scripts", "transcrever.py"), """
+    import sys, time, warnings, comum
+    comum.utf8_stdout(); comum.log_proprio()
+    print("[1/2] transcrevendo seu microfone", flush=True)
+    for n in (10, 30, 50):
+        print(f"[pct] {n}", flush=True); time.sleep(1.5)
+    warnings.warn("aviso do motor com acentuação")
+    print("[2/2] transcrevendo os outros", flush=True); print("[pct] 70", flush=True); time.sleep(1.5)
+    open(comum.base_de(sys.argv[1]) + ".transcricao.md", "w", encoding="utf-8").write("**[00:00:01] Eu:** pronto\n")
+    print("[pronto]", flush=True)
+    """);
+cfg.PastaMotor = motor;
+var bt = "2026-10-21_10-00";
+Directory.CreateDirectory(Path.Combine(raiz, bt));
+foreach (var ext in new[] { "eu.flac", "outros.flac", "sha256" }) File.WriteAllText(Path.Combine(raiz, bt, $"{bt}.{ext}"), "x");
+Environment.SetEnvironmentVariable("REUNIOES_CONFIG", Path.Combine(raiz, "config-teste.json"));
+File.WriteAllText(Path.Combine(raiz, "config-teste.json"), System.Text.Json.JsonSerializer.Serialize(new { pastaGravacoes = raiz }));
+int avisos = 0;
+g.Mudou += () => Interlocked.Increment(ref avisos);
+g.Transcrever(bt);
+var pcts = new HashSet<int?>();
+for (int i = 0; i < 40 && g.Listar().First(x => x.Base == bt).Estado is "transcrevendo" or "fila"; i++)
+{
+    pcts.Add(g.Listar().First(x => x.Base == bt).Pct);
+    Thread.Sleep(250);
+}
+Checar(pcts.Contains(30) && pcts.Contains(70), $"lista acompanha a porcentagem ({string.Join(",", pcts)})");
+Checar(g.Listar().First(x => x.Base == bt).Estado == "pronta", "terminou pronta");
+var logMotor = File.ReadAllText(Path.Combine(raiz, bt, $"{bt}.log"));
+Checar(logMotor.Contains("[pct] 70") && logMotor.Contains("acentuação") && logMotor.Contains("[pronto]"), "o motor escreveu o proprio log (stdout e stderr, UTF-8)");
+Checar(!g.TranscrevendoAgora(), "depois de terminar, nao esta transcrevendo");
+Checar(avisos > 0, $"avisou a tela durante a transcricao ({avisos}x)");
+
 Console.WriteLine(falhas == 0 ? "\nTUDO OK" : $"\n{falhas} FALHA(S)");
 foreach (var a in Directory.GetFiles(raiz, "*", SearchOption.AllDirectories)) File.SetAttributes(a, FileAttributes.Normal);
 Directory.Delete(raiz, true);

@@ -22,6 +22,7 @@ Resumo vivo do projeto: decisões, o que está pronto, o que falta e onde fica c
 - Fato ou fake checa TODAS as afirmações verificáveis (sem limite), cada uma no contexto da conversa (pronomes e referências resolvidos), toda com fonte da busca (sem fonte = sem_dados), citações marcadas em quem. Reunião fictícia de 12 afirmações: 28 s. Prazo 20 min no Windows; na web até 60 buscas.
 - Mais de 5 itens: chips de filtro por veredito (mesmo componente `.pessoa` do filtro da transcrição).
 - Selo (`.selo` em base.css) é componente único: "Recomendada" nas Configurações e veredito do Fato ou fake; cores por tokens --ok/--alerta/--danger-texto.
+- O motor escreve o próprio log (`REUNIOES_LOG`, stdout/stderr redirecionados no Python): fechar ou atualizar o app no meio não corta mais o andamento (antes o app lia por pipe e o log parava). A lista relê o log de 5 em 5 s, porque o Windows nem sempre avisa que um arquivo aberto cresceu. Atualizar fica bloqueado durante transcrição.
 - Commits sem coautoria/atribuição de IA.
 
 ## Feito (versões)
@@ -32,6 +33,7 @@ Resumo vivo do projeto: decisões, o que está pronto, o que falta e onde fica c
 - 1.0.14 "Carregando modelos" de ~5 min para ~20 s: modelo lido só do disco (23/10/2026; gravação curta: 6,5 min → 2 min)
 - 1.0.15 Fato ou fake no leitor (aba própria + "Checar trecho" ao selecionar texto), 23/10/2026
 - 1.0.16 Fato ou fake checa todas as afirmações, no contexto, sempre com fonte; filtros por veredito (24/10/2026)
+- 1.0.17 transcrição não trava mais na tela: log escrito pelo motor, lista relê a porcentagem, não atualiza no meio de uma transcrição (24/10/2026)
 
 ## Pendente / conhecido
 - Gravações curtas mostram "0 falantes".
@@ -43,3 +45,4 @@ Resumo vivo do projeto: decisões, o que está pronto, o que falta e onde fica c
 - Tempo do Fato ou fake numa reunião real de 1 h não medido (só amostras fictícias).
 - Fontes da checagem às vezes vêm da imprensa em vez do órgão oficial, mesmo com o prompt pedindo o oficial primeiro.
 - Progresso da etapa "separar vozes" não testado com token do Hugging Face.
+- Transcrição lenta na GTX 1660 SUPER: ~1× tempo real (24 min de áudio → ~25 min só reconhecendo, float16, lotes de 8). A porcentagem anda aos saltos, um lote (~4 min) por vez. Suspeita: VRAM quase cheia (5,4 de 6 GB) com outros apps usando a GPU; testar batch menor/int8_float16 (24/10/2026).

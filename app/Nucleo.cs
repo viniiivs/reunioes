@@ -157,6 +157,7 @@ public static class Nucleo
                 return Atualizador.Status();
             case "aplicarAtualizacao":
                 if (Gravacoes.GravandoAgora()) throw new InvalidOperationException("Pare a gravação antes de atualizar.");
+                if (Gravacoes.TranscrevendoAgora()) throw new InvalidOperationException("Espere a transcrição terminar para atualizar.");
                 Servico.Parar();
                 Atualizador.AplicarEReiniciar();
                 return null;
