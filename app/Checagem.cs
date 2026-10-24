@@ -37,7 +37,7 @@ public sealed partial class Gravacoes
             File.WriteAllText(prompt, PromptChecagem.Sistema);
             var res = await RodarClaude(prompt, "checagem-schema.json",
                 PromptChecagem.Mensagem(dia, LerCompartilhado(Caminho(b, "transcricao.md")), trecho, quem, tempo),
-                "WebSearch,WebFetch", TimeSpan.FromMinutes(6));
+                "WebSearch,WebFetch", TimeSpan.FromMinutes(20));
 
             var origem = trecho is null ? "reuniao" : "trecho";
             var agora = DateTime.Now.ToString("s");

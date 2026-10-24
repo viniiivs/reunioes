@@ -16,6 +16,7 @@ let checagem = null;       // { itens, gerado_em, modelo, reuniao_checada }
 let checando = false;
 let checagemErro = null;
 let podeChecar = true;
+let filtroVeredito = null;   // chip escolhido na aba Fato ou fake (null = todas)
 let trechoEscolhido = null;   // { trecho, quem, tempo } da seleção na transcrição
 let nomeEu = null;   // nome da pessoa (Configurações > Resumo); só muda o que aparece, o arquivo segue com "Eu"
 const rotulo = (q) => (q === "Eu" && nomeEu ? nomeEu : q);
@@ -230,13 +231,13 @@ function desenharChecagem() {
   const pesquisando = checando ? `
     <div class="veredito-topo"><i class="ph ph-circle-notch girando" aria-hidden="true"></i>
       <div><strong>O Claude está pesquisando na web</strong>
-      <span>Leva de 20 segundos a 1 minuto. Esta aba atualiza sozinha.</span></div></div>` : "";
+      <span>Confere cada afirmação, uma a uma: leva de 30 segundos a alguns minutos, conforme o tamanho da reunião. Esta aba atualiza sozinha.</span></div></div>` : "";
 
   if (!itens.length && !checagem?.reuniao_checada) {
     const falta = !podeChecar ? (naWeb ? "Precisa de uma chave da API da Anthropic: cole em Configurações, na seção Resumo com IA." : "Precisa do Claude Code instalado neste computador.") : "";
     painelChecagem.innerHTML = pesquisando || `
       <div class="vazio"><h2>Fato ou fake</h2>
-        <p>O Claude escolhe o que dá para verificar na reunião (números, datas, leis, notícias), pesquisa na web e diz se é fato ou fake, com a fonte.</p>
+        <p>O Claude confere tudo o que dá para verificar na reunião (números, datas, leis, notícias), cada frase no contexto da conversa, pesquisa na web e diz se é fato ou fake, com a fonte.</p>
         <p>Para checar só uma frase, selecione o trecho na transcrição.</p>
         ${erro}${falta ? `<p>${falta}</p>` : ""}
         <button class="btn primario" data-acao="checar"${podeChecar ? "" : " disabled"}><i class="ph ph-seal-check" aria-hidden="true"></i> Checar a reunião</button></div>`;
@@ -248,14 +249,22 @@ function desenharChecagem() {
     .map(([v, um, varios]) => { const n = conta(v); return n ? `${n} ${n === 1 ? um : varios}` : null; }).filter(Boolean);
   const alerta = conta("fake") + conta("impreciso") > 0;
   const quando = checagem.gerado_em ? new Date(checagem.gerado_em) : null;
-  const lista = (t, xs) => xs.length ? `${t ? `<h2>${t}</h2>` : ""}<ol class="checagem-lista">${xs.map(itemChecado).join("")}</ol>` : "";
-  const dois = trechos.length && daReuniao.length;
+  // muitas afirmações: chips para filtrar por veredito (mesmo componente do filtro de pessoas)
+  const FILTROS = [["fake", "Fake"], ["impreciso", "Imprecisas"], ["fato", "Fatos"], ["sem_dados", "Sem dados"]];
+  if (filtroVeredito && !conta(filtroVeredito)) filtroVeredito = null;
+  const chips = itens.length > 5 ? `<nav class="pessoas filtros-checagem" aria-label="Filtrar por veredito">${
+    [[null, "Todas", itens.length], ...FILTROS.map(([v, t]) => [v, t, conta(v)]).filter(([, , n]) => n)].map(([v, t, n]) =>
+      `<button class="pessoa" aria-pressed="${filtroVeredito === v}" data-filtro="${v || ""}">${t} <b>${n}</b></button>`).join("")}</nav>` : "";
+  const filtra = (xs) => (filtroVeredito ? xs.filter((x) => x.veredito === filtroVeredito) : xs);
+  const lista = (t, xs) => (xs = filtra(xs)).length ? `${t ? `<h2>${t}</h2>` : ""}<ol class="checagem-lista">${xs.map(itemChecado).join("")}</ol>` : "";
+  const dois = filtra(trechos).length && filtra(daReuniao).length;
   painelChecagem.innerHTML = `
     ${pesquisando || `<div class="veredito-topo${alerta ? " alerta" : ""}">
       <i class="ph ${alerta ? "ph-seal-warning" : "ph-seal-check"}" aria-hidden="true"></i>
       <div><strong>${itens.length ? f.plural(itens.length, "afirmação checada", "afirmações checadas") : "Nada para checar"}</strong>
       <span>${itens.length ? partes.join(", ") : "A reunião não tem afirmações que dê para verificar em fontes públicas."}</span></div></div>`}
     ${erro}
+    ${chips}
     ${lista(dois ? "Trechos que você escolheu" : "", trechos)}
     ${lista(dois ? "Da reunião" : "", daReuniao)}
     <div class="rodape-resumo">
@@ -277,6 +286,12 @@ async function pedirChecagem(args, botao) {
 }
 
 painelChecagem.addEventListener("click", (e) => {
+  const fi = e.target.closest("[data-filtro]");
+  if (fi) {
+    filtroVeredito = filtroVeredito === (fi.dataset.filtro || null) ? null : fi.dataset.filtro || null;
+    desenharChecagem();
+    return painelChecagem.querySelector(`[data-filtro="${filtroVeredito || ""}"]`)?.focus();
+  }
   const t = e.target.closest("[data-tempo]");
   if (t) return irPara(t.dataset.tempo);
   const a = e.target.closest("a.fonte");

@@ -89,15 +89,18 @@ const resumoExemplo = {
 };
 const checagemExemplo = {
   itens: [
-    { afirmacao: "O Brasil tem uns 250 milhões de habitantes", quem: "Ana", tempo: "00:00:00", veredito: "fake",
-      explicacao: "O IBGE estima 213,4 milhões de habitantes em 2025, não 250 milhões.",
-      fontes: [{ titulo: "Estimativas da população | IBGE", url: "https://www.ibge.gov.br/estatisticas/sociais/populacao/9103-estimativas-de-populacao.html" }], origem: "reuniao" },
-    { afirmacao: "A LGPD vale desde 2018, com multa de até 2% do faturamento", quem: "Bruno", tempo: "00:00:07", veredito: "impreciso",
-      explicacao: "Foi sancionada em 2018, mas só vale desde 2020; a multa é de até 2% do faturamento, limitada a R$ 50 milhões por infração.",
-      fontes: [{ titulo: "Lei nº 13.709/2018 (LGPD)", url: "https://www.planalto.gov.br/ccivil_03/_ato2015-2018/2018/lei/l13709.htm" }, { titulo: "ANPD: sanções", url: "https://www.gov.br/anpd/pt-br" }], origem: "reuniao" },
-    { afirmacao: "O Pix foi lançado em novembro de 2020", quem: "Eu", tempo: "00:00:15", veredito: "fato",
-      explicacao: "O Banco Central lançou o Pix em 16 de novembro de 2020.",
-      fontes: [{ titulo: "Pix | Banco Central do Brasil", url: "https://www.bcb.gov.br/estabilidadefinanceira/pix" }], origem: "reuniao" },
+    {afirmacao: "O Brasil tem uns 250 milhões de habitantes",quem: "Ana",tempo: "00:00:06",veredito: "fake",explicacao: "O IBGE estima 213,4 milhões de habitantes em julho de 2025, bem abaixo de 250 milhões.",fontes: [{titulo: "Brasil tem 213,4 milhões de habitantes em 2025, segundo o IBGE",url: "https://www.itatiaia.com.br/brasil/brasil-tem-213-4-milhoes-de-habitantes-em-2025-segundo-dados-do-ibge/"}],origem: "reuniao"},
+    {afirmacao: "Brasília foi inaugurada em 1960",quem: "Bruno",tempo: "00:00:14",veredito: "fato",explicacao: "Brasília foi inaugurada em 21 de abril de 1960 por Juscelino Kubitschek.",fontes: [{titulo: "Construção de Brasília",url: "https://www.infoescola.com/historia-do-brasil/construcao-de-brasilia"}],origem: "reuniao"},
+    {afirmacao: "O PIB do Brasil cresceu uns 3% no ano passado (2025), segundo o IBGE",quem: "Eu",tempo: "00:00:22",veredito: "impreciso",explicacao: "O IBGE informou alta de 2,3% do PIB em 2025, não 3%.",fontes: [{titulo: "PIB do Brasil cresce 2,3% em 2025",url: "https://www.poder360.com.br/poder-economia/pib-do-brasil-cresce-23-em-2025/"}],origem: "reuniao"},
+    {afirmacao: "A LGPD está valendo desde 2018",quem: "Bruno",tempo: "00:00:31",veredito: "impreciso",explicacao: "A lei é de 2018, mas entrou em vigor em set/2020; as sanções valem desde 1º/8/2021.",fontes: [{titulo: "Empresas agora correm risco de multa ao violar a LGPD",url: "https://mercadoeconsumo.com.br/28/02/2023/economia/empresas-agora-correm-risco-de-multa-ao-violar-a-lei-de-protecao-de-dados/amp/"}],origem: "reuniao"},
+    {afirmacao: "A multa da LGPD é de até 2% do faturamento",quem: "Bruno",tempo: "00:00:31",veredito: "fato",explicacao: "A multa simples é de até 2% do faturamento no Brasil no último exercício, excluídos tributos.",fontes: [{titulo: "Multas por descumprimento da LGPD podem chegar a R$ 50 milhões",url: "https://diariodonordeste.verdesmares.com.br/ultima-hora/seu-direito/multas-por-descumprimento-da-lgpd-comecam-a-ser-aplicadas-valor-pode-chegar-a-r-50-milhoes-1.3117586"}],origem: "reuniao"},
+    {afirmacao: "A multa da LGPD tem limite de 50 milhões por infração",quem: "Ana",tempo: "00:00:42",veredito: "fato",explicacao: "A multa é limitada a R$ 50 milhões por infração.",fontes: [{titulo: "Multas por descumprimento da LGPD podem chegar a R$ 50 milhões",url: "https://diariodonordeste.verdesmares.com.br/ultima-hora/seu-direito/multas-por-descumprimento-da-lgpd-comecam-a-ser-aplicadas-valor-pode-chegar-a-r-50-milhoes-1.3117586"}],origem: "reuniao"},
+    {afirmacao: "O Pix foi lançado em 2020 pelo Banco Central",quem: "Eu",tempo: "00:00:49",veredito: "fato",explicacao: "O Pix foi lançado oficialmente em 16 de novembro de 2020 pelo Banco Central.",fontes: [{titulo: "Pix comemora 5 anos com mais de R$ 70 trilhões em movimentações",url: "https://www.tecmundo.com.br/mercado/408625-pix-comemora-5-anos-com-mais-de-r-70-trilhoes-em-movimentacoes.htm"}],origem: "reuniao"},
+    {afirmacao: "O Pix já passa de 150 milhões de usuários",quem: "Eu",tempo: "00:00:49",veredito: "fato",explicacao: "Dados de 2025 apontam ~162,8 milhões de pessoas físicas e cerca de 180 milhões de usuários no total.",fontes: [{titulo: "Pix comemora 5 anos com mais de R$ 70 trilhões em movimentações",url: "https://www.tecmundo.com.br/mercado/408625-pix-comemora-5-anos-com-mais-de-r-70-trilhoes-em-movimentacoes.htm"}],origem: "reuniao"},
+    {afirmacao: "A Selic hoje está em 15%",quem: "Bruno",tempo: "00:01:00",veredito: "fake",explicacao: "Em 23/10/2026 a meta Selic está em 13,75% ao ano, definida pelo Copom em setembro.",fontes: [{titulo: "Taxa SELIC Hoje: 13,75% - Atualizada em 23/10/2026",url: "https://www.meelion.com/indicadores-financeiros/selic/"}],origem: "reuniao"},
+    {afirmacao: "O Everest tem 8.848 metros",quem: "Bruno",tempo: "00:01:12",veredito: "fato",explicacao: "A altura oficial é 8.848,86 m (China e Nepal, 2020), arredondada para 8.848 m.",fontes: [{titulo: "Adiós disputa: esta es la medida oficial del Monte Everest",url: "https://www.elfinanciero.com.mx/mundo/adios-disputa-esta-es-la-medida-oficial-del-monte-everest/"}],origem: "reuniao"},
+    {afirmacao: "A água ferve a 90 graus ao nível do mar",quem: "Eu (citando o cliente)",tempo: "00:01:20",veredito: "fake",explicacao: "Ao nível do mar, a água ferve a 100 °C; só em altitude ferve a menos.",fontes: [{titulo: "Influência da Pressão Externa sobre o Ponto de Ebulição",url: "https://www.preparaenem.com/quimica/influencia-pressao-externa-sobre-ponto-ebulicao.htm"}],origem: "reuniao"},
+    {afirmacao: "O Python foi criado por Guido van Rossum em 1991",quem: "Ana (citando o cliente)",tempo: "00:01:28",veredito: "fato",explicacao: "Guido van Rossum lançou o Python 0.9.0 em fevereiro de 1991.",fontes: [{titulo: "Python (programming language)",url: "https://dlab.epfl.ch/wikispeedia/wpcd/wp/p/Python_%2528programming_language%2529.htm"}],origem: "reuniao"},
   ],
   reuniao_checada: true, gerado_em: hoje.toISOString(), modelo: "claude-sonnet",
 };
@@ -141,7 +144,7 @@ async function simular(cmd, args) {
     case "ler":
       if (checagemSim === null) checagemSim = q.has("checagem") ? structuredClone(checagemExemplo) : false;
       return { texto: textoExemplo, gravacao: exemplo.find((g) => g.base === args.base) || exemplo[1], resumo: q.has("semresumo") ? null : resumoExemplo, resumoAtivo: true,
-        checagem: checagemSim || null, checando: checandoSim || q.has("checando"), checagemErro: q.has("checagemerro") ? "O Claude não respondeu em 6 minutos." : null, podeChecar: !q.has("semclaude") };
+        checagem: checagemSim || null, checando: checandoSim || q.has("checando"), checagemErro: q.has("checagemerro") ? "O Claude não respondeu em 20 minutos." : null, podeChecar: !q.has("semclaude") };
     case "checar":
       // pesquisa fictícia: 1,2 s depois chega o resultado (trecho soma no topo; reunião troca os itens)
       checandoSim = true;
