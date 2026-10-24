@@ -18,6 +18,11 @@
   --accent-soft: #e2f1ef;
   --danger: #b42318;
   --danger-soft: #fbe9e7;
+  --danger-texto: #b42318;   /* vermelho legível em texto pequeno */
+  --ok: #1a7f37;
+  --ok-soft: #e6f4ea;
+  --alerta: #8a5a00;
+  --alerta-soft: #fdf1d3;
   --focus: #0e6e68;
   --shadow: 0 12px 40px rgb(14 40 38 / 0.16), 0 2px 6px rgb(14 40 38 / 0.08);
 
@@ -43,6 +48,11 @@
     --accent-soft: #1d3633;
     --danger: #f08b80;
     --danger-soft: #3a2220;
+    --danger-texto: #f08b80;
+    --ok: #56d364;
+    --ok-soft: #1c3324;
+    --alerta: #e3b341;
+    --alerta-soft: #3a3017;
     --focus: #52b5ab;
     --shadow: 0 16px 48px rgb(0 0 0 / 0.5), 0 2px 8px rgb(0 0 0 / 0.3);
   }
@@ -103,6 +113,18 @@ body { display: flex; flex-direction: column; overflow: hidden; }
 }
 .busca input::placeholder { color: var(--faint); }
 .busca input:focus { outline: none; border-color: var(--focus); box-shadow: 0 0 0 1px var(--focus); }
+
+/* ---- selo: rótulo curto em cápsula. Um só no app: "Recomendado" das opções e veredito do Fato ou fake ---- */
+.selo {
+  display: inline-flex; align-items: center; justify-content: center; gap: 4px;
+  height: 20px; padding: 0 8px; border-radius: 999px;
+  background: var(--surface-2); color: var(--muted);
+  font: 700 11px/1 var(--font); white-space: nowrap;
+}
+.selo .ph { font-size: 13px; }
+.selo.fato { background: var(--ok-soft); color: var(--ok); }
+.selo.fake { background: var(--danger-soft); color: var(--danger-texto); }
+.selo.impreciso { background: var(--alerta-soft); color: var(--alerta); }
 
 /* ---- aviso flutuante ---- */
 .aviso {

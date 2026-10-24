@@ -7,7 +7,7 @@
     <ImplicitUsings>enable</ImplicitUsings>
   </PropertyGroup>
   <ItemGroup>
-    <Compile Include="..\app\Gravacoes.cs;..\app\Config.cs;..\app\Sistema.cs;..\app\PromptResumo.cs;..\app\Atualizador.cs" />
+    <Compile Include="..\app\Gravacoes.cs;..\app\Config.cs;..\app\Sistema.cs;..\app\PromptResumo.cs;..\app\Checagem.cs;..\app\PromptChecagem.cs;..\app\Atualizador.cs" />
     <PackageReference Include="System.Management" Version="8.0.0" />
     <PackageReference Include="System.Security.Cryptography.ProtectedData" Version="8.0.0" />
     <PackageReference Include="Velopack" Version="1.2.161" />

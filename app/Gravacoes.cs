@@ -29,7 +29,7 @@ public record Resumo(string Estado, string? Veredito, bool? PrecisaAgir, int? Ac
 
 /// <summary>Le a pasta das gravacoes e roda o motor: gravar, transcrever (fila, uma por vez: a GPU
 /// e uma so), nomear vozes e resumir com o Claude Code.</summary>
-public sealed class Gravacoes
+public sealed partial class Gravacoes
 {
     readonly Func<Config> cfg;
     readonly object trava = new();
@@ -363,7 +363,17 @@ public sealed class Gravacoes
         try { if (File.Exists(rj)) resumo = JsonNode.Parse(LerCompartilhado(rj)); }
         catch (Exception) { }   // resumo corrompido nao pode impedir de ler a transcricao
         var nome = cfg().Resumo.Nome?.Trim();
-        return new { texto = LerCompartilhado(md), gravacao = g, resumo, resumoAtivo = cfg().Resumo.Ativo, nome = string.IsNullOrEmpty(nome) ? null : nome };
+        var cj = Caminho(b, "checagem.json");
+        JsonNode? checagem = null;
+        try { if (File.Exists(cj)) checagem = JsonNode.Parse(LerCompartilhado(cj)); }
+        catch (Exception) { }
+        var ce = Caminho(b, "checagem.erro");
+        return new
+        {
+            texto = LerCompartilhado(md), gravacao = g, resumo, resumoAtivo = cfg().Resumo.Ativo, nome = string.IsNullOrEmpty(nome) ? null : nome,
+            checagem, checando = Checando(b), checagemErro = File.Exists(ce) ? LerCompartilhado(ce) : null,
+            podeChecar = Sistema.Claude() != null,
+        };
     }
 
     ProcessStartInfo Py(string script, bool comToken)
@@ -620,33 +630,8 @@ public sealed class Gravacoes
                 File.Delete(Caminho(b, "resumo.erro"));
                 var prompt = Path.Combine(Config.DirApp, "resumo-prompt.md");
                 File.WriteAllText(prompt, PromptResumo.Montar(cfg().Resumo));
-                var schema = Path.Combine(AppContext.BaseDirectory, "motor", "resumo-schema.json");
-                var psi = new ProcessStartInfo(Sistema.Claude()!)
-                {
-                    UseShellExecute = false, CreateNoWindow = true, WorkingDirectory = Config.DirApp,
-                    RedirectStandardInput = true, RedirectStandardOutput = true, RedirectStandardError = true,
-                    StandardInputEncoding = new UTF8Encoding(false), StandardOutputEncoding = Encoding.UTF8,
-                };
-                // Prompt de sistema proprio e sem configs/MCPs do usuario: chamada enxuta.
-                foreach (var a in new[] { "-p", "--output-format", "json", "--model", "sonnet", "--tools", "",
-                             "--no-session-persistence", "--strict-mcp-config", "--setting-sources", "",
-                             "--system-prompt-file", prompt, "--json-schema", File.ReadAllText(schema) })
-                    psi.ArgumentList.Add(a);
-                using var p = Process.Start(psi)!;
-                var saida = p.StandardOutput.ReadToEndAsync();
-                var erro = p.StandardError.ReadToEndAsync();
-                await p.StandardInput.WriteAsync(LerCompartilhado(Caminho(b, "transcricao.md")));
-                p.StandardInput.Close();
-                using var limite = new CancellationTokenSource(TimeSpan.FromMinutes(5));
-                try { await p.WaitForExitAsync(limite.Token); }
-                catch (OperationCanceledException) { p.Kill(true); throw new TimeoutException("O Claude não respondeu em 5 minutos."); }
-
-                var res = JsonNode.Parse(await saida);
-                if (res?["structured_output"] is not JsonObject so)
-                {
-                    var m = (res?["result"]?.ToString() ?? await erro).Trim();
-                    throw new InvalidOperationException(m.Length > 0 ? m : "Resposta vazia do Claude.");
-                }
+                var res = await RodarClaude(prompt, "resumo-schema.json", LerCompartilhado(Caminho(b, "transcricao.md")), "", TimeSpan.FromMinutes(5));
+                var so = (JsonObject)res["structured_output"]!;
                 so["gerado_em"] = DateTime.Now.ToString("s");
                 so["modelo"] = res["modelUsage"] is JsonObject mu && mu.Count > 0 ? mu.First().Key : "sonnet";
                 File.WriteAllText(Caminho(b, "resumo.json"), so.ToJsonString(Config.Json));

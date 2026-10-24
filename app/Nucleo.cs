@@ -82,6 +82,7 @@ public static class Nucleo
             case "excluir": Gravacoes.Excluir(b!); return null;
             case "ler": return await Task.Run(() => Gravacoes.Ler(b!));
             case "resumir": Gravacoes.Resumir(b!); return null;
+            case "checar": Gravacoes.Checar(b!, a["trecho"]?.GetValue<string>(), a["quem"]?.GetValue<string>(), a["tempo"]?.GetValue<string>()); return null;
             case "nomear": await Gravacoes.Nomear(b!, a["de"]!.GetValue<string>(), a["para"]!.GetValue<string>()); return null;
             case "gravar": await Task.Run(Gravacoes.GravarOuParar); return null;
             case "abrirArquivo": return Abrir(Gravacoes.Arquivo(b!, a["ext"]!.GetValue<string>()));

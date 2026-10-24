@@ -76,10 +76,7 @@
 .opcao[aria-checked="true"] { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent); background: var(--accent-soft); }
 .opcao b { font-size: 14px; }
 .opcao small { color: var(--muted); font-size: 12.5px; line-height: 1.4; }
-.opcao .selo {
-  position: absolute; top: -9px; right: 10px; padding: 1px 7px; border-radius: 999px;
-  background: var(--accent); color: var(--accent-ink); font-size: 11px; font-weight: 700;
-}
+.opcao .selo { position: absolute; top: -10px; right: 10px; background: var(--accent); color: var(--accent-ink); }
 
 /* caixa de orientacao (token do Hugging Face, Claude) */
 .guia {

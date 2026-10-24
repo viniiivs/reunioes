@@ -16,6 +16,7 @@ Grava suas reuniões, transcreve no seu próprio computador e diz o que ficou pa
 - **Transcreve no seu computador** com WhisperX. O áudio nunca sai da sua máquina. Com placa de vídeo NVIDIA, uma reunião de 30 minutos fica pronta em poucos minutos; sem ela, funciona pelo processador (mais devagar).
 - **Separa as vozes** de cada pessoa (opcional) e aprende os nomes: dê nome a "Falante 1" uma vez e ele reconhece nas próximas reuniões.
 - **Resumo com IA** (opcional, com o [Claude Code](https://claude.com/product/claude-code)): lista as tarefas que são suas, com o trecho da reunião que comprova cada uma.
+- **Fato ou fake** (opcional, também com o Claude Code): confere na web o que foi dito na reunião (números, datas, leis, notícias) e mostra se é fato, fake ou impreciso, com uma frase de explicação e a fonte. Para checar só uma frase, selecione o trecho na transcrição.
 - **Atualiza sozinho**: baixa versões novas em segundo plano e avisa quando é só reiniciar.
 
 ![Resumo de uma reunião](docs/resumo.png)
@@ -37,7 +38,7 @@ Grava suas reuniões, transcreve no seu próprio computador e diz o que ficou pa
 | Internet | só para instalar e para as atualizações; gravar e transcrever funcionam offline |
 | Placa de vídeo NVIDIA | opcional, deixa a transcrição muito mais rápida |
 | Separar vozes | opcional; precisa de uma conta grátis no [Hugging Face](https://huggingface.co) e aceitar os termos do modelo [pyannote community-1](https://huggingface.co/pyannote/speaker-diarization-community-1). O assistente explica |
-| Resumo com IA | opcional; precisa do [Claude Code](https://claude.com/product/claude-code) instalado e com login |
+| Resumo com IA e Fato ou fake | opcionais; precisam do [Claude Code](https://claude.com/product/claude-code) instalado e com login |
 
 ## Versão web
 
@@ -46,7 +47,7 @@ Em **[viniiivs.github.io/reunioes](https://viniiivs.github.io/reunioes/)**, com 
 - **Grava duas faixas**: o seu microfone e o som da aba (ou da tela) da reunião que você compartilhar. Marque "Compartilhar áudio" quando o navegador perguntar.
 - **Transcreve no navegador** com o Whisper ([Transformers.js](https://github.com/huggingface/transformers.js)), pela placa de vídeo (WebGPU) quando dá, ou pelo processador. O modelo é baixado uma vez (de 70 MB a 1,5 GB, conforme a qualidade) e o áudio não sai do computador.
 - **Importa arquivos**: arraste um áudio ou vídeo para a lista.
-- **Resumo com IA** (opcional) com a sua chave da API da Anthropic, guardada só no navegador.
+- **Resumo com IA e Fato ou fake** (opcionais) com a sua chave da API da Anthropic, guardada só no navegador. A checagem usa a busca na web da API (cobrada à parte pela Anthropic, US$ 10 por mil buscas).
 - Gravações e transcrições ficam no próprio navegador; baixe o que quiser guardar.
 - Funciona offline depois do primeiro uso e pode ser instalada como app (ícone na barra de endereço).
 
@@ -55,7 +56,7 @@ O que só o app de Windows faz: gravar sozinho quando a reunião começa, atalho
 
 Gravação e transcrição acontecem no seu computador. Só sai daqui:
 - o download dos modelos e das atualizações;
-- o texto da transcrição, enviado ao Claude, se você ligar o resumo com IA.
+- o texto da transcrição, enviado ao Claude, se você ligar o resumo com IA ou pedir uma checagem (Fato ou fake); na checagem o Claude também pesquisa na web as afirmações escolhidas.
 
 Grave reuniões só com o conhecimento das pessoas e respeitando as leis do seu país.
 

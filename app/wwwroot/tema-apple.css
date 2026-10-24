@@ -27,6 +27,11 @@
   --accent-soft: rgba(10, 143, 132, 0.14);
   --danger: #ff3b30;
   --danger-soft: rgba(255, 59, 48, 0.12);
+  --danger-texto: #d70015;
+  --ok: #248a3d;
+  --ok-soft: rgba(52, 199, 89, 0.16);
+  --alerta: #a05a00;
+  --alerta-soft: rgba(255, 159, 10, 0.18);
   --focus: rgba(10, 143, 132, 0.5);
   --vidro: rgba(255, 255, 255, 0.62);
   --vidro-borda: rgba(255, 255, 255, 0.7);
@@ -49,6 +54,11 @@
     --accent-soft: rgba(64, 200, 184, 0.16);
     --danger: #ff453a;
     --danger-soft: rgba(255, 69, 58, 0.16);
+    --danger-texto: #ff6961;
+    --ok: #30d158;
+    --ok-soft: rgba(48, 209, 88, 0.18);
+    --alerta: #ffb340;
+    --alerta-soft: rgba(255, 159, 10, 0.2);
     --vidro: rgba(44, 44, 46, 0.6);
     --vidro-borda: rgba(255, 255, 255, 0.12);
     --sombra-ctl: 0 0.5px 1.5px rgba(0, 0, 0, 0.5), 0 0 0 0.5px rgba(255, 255, 255, 0.1);

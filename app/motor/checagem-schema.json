@@ -1,0 +1,31 @@
+{
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["itens"],
+  "properties": {
+    "itens": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["afirmacao", "quem", "tempo", "veredito", "explicacao", "fontes"],
+        "properties": {
+          "afirmacao": { "type": "string" },
+          "quem": { "type": ["string", "null"] },
+          "tempo": { "type": ["string", "null"] },
+          "veredito": { "type": "string", "enum": ["fato", "fake", "impreciso", "sem_dados"] },
+          "explicacao": { "type": "string" },
+          "fontes": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["titulo", "url"],
+              "properties": { "titulo": { "type": "string" }, "url": { "type": "string" } }
+            }
+          }
+        }
+      }
+    }
+  }
+}

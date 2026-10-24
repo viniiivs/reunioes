@@ -6,6 +6,7 @@ import * as motor from "./motor.js";
 import { Gravacao } from "./gravador.js";
 import { VERSAO } from "./versao.js";
 import { montarPrompt, ESQUEMA } from "./resumo.js";
+import * as checagem from "./checagem.js";
 
 const MODELO_RESUMO = "claude-sonnet-5-5";
 const canal = new BroadcastChannel("reunioes");
@@ -50,7 +51,7 @@ const extDe = (tipo) => (/ogg/.test(tipo) ? "ogg" : /mp4|m4a|aac/.test(tipo) ? "
 const ORIGEM = { browser: "Aba do navegador", window: "Janela", monitor: "Tela inteira" };
 
 function paraLista(g) {
-  const { texto, resumoDados, faixas, parcial, ...resto } = g;
+  const { texto, resumoDados, faixas, parcial, checagem, checagemErro, ...resto } = g;
   return resto;
 }
 
@@ -295,6 +296,73 @@ async function resumir(base) {
   mudou();
 }
 
+// ---------------------------------------------------------------- fato ou fake
+
+const checando = new Set();
+
+// Busca na web pela API (web_search) e devolve o resultado pela ferramenta registrar_checagem.
+// A API pode pausar uma busca longa (pause_turn): manda a conversa de volta e continua.
+async function checar(base, trecho, quem, tempo) {
+  const chave = db.chaveApi.ler();
+  if (!chave) throw new Error("Cole a sua chave da API da Anthropic em Configurações, na seção Resumo com IA.");
+  const g = await precisa(base);
+  if (!g.texto) throw new Error("Transcreva antes de checar.");
+  trecho = trecho?.trim() || null;
+  if (trecho && trecho.length > 2000) throw new Error("Escolha um trecho menor (até umas 300 palavras).");
+  if (checando.has(base)) throw new Error("Já estou checando esta reunião. Espere terminar.");
+  checando.add(base);
+  g.checagemErro = null;
+  await db.gravacoes.salvar(g);
+  mudou();
+  (async () => {
+    try {
+      const msgs = [{ role: "user", content: checagem.mensagem(new Date(g.inicio), g.texto, trecho, quem, tempo) }];
+      const ferramentas = [
+        { type: "web_search_20250305", name: "web_search", max_uses: 8 },
+        { name: "registrar_checagem", description: "Registra o resultado da checagem.", input_schema: checagem.ESQUEMA },
+      ];
+      let dados = null;
+      for (let volta = 0; volta < 6 && !dados; volta++) {
+        const forcar = volta > 0 && msgs.at(-1).role === "user" && typeof msgs.at(-1).content === "string" && msgs.at(-1).content.startsWith("Registre");
+        const r = await fetch("https://api.anthropic.com/v1/messages", {
+          method: "POST",
+          headers: { "content-type": "application/json", "x-api-key": chave, "anthropic-version": "2023-06-01", "anthropic-dangerous-direct-browser-access": "true" },
+          body: JSON.stringify({
+            model: MODELO_RESUMO, max_tokens: 4096, system: checagem.SISTEMA, tools: ferramentas, messages: msgs,
+            ...(forcar ? { tool_choice: { type: "tool", name: "registrar_checagem" } } : {}),
+          }),
+        });
+        const j = await r.json().catch(() => ({}));
+        if (!r.ok) throw new Error(r.status === 401 ? "A chave da API foi recusada. Confira em Configurações." : j.error?.message || `Erro ${r.status} da API.`);
+        dados = j.content?.find((c) => c.type === "tool_use" && c.name === "registrar_checagem")?.input || null;
+        if (dados) break;
+        msgs.push({ role: "assistant", content: j.content });
+        if (j.stop_reason !== "pause_turn") msgs.push({ role: "user", content: "Registre o resultado com registrar_checagem." });
+      }
+      if (!dados) throw new Error("O Claude não devolveu a checagem.");
+      const agora = new Date().toISOString();
+      const origem = trecho ? "trecho" : "reuniao";
+      const novos = (dados.itens || []).map((x) => ({
+        ...x, fontes: (x.fontes || []).filter((f) => /^https:///.test(f.url)), origem, checado_em: agora,
+      }));
+      const atual = await precisa(base);
+      const antigos = atual.checagem?.itens || [];
+      atual.checagem = {
+        itens: trecho ? [...novos, ...antigos] : [...antigos.filter((x) => x.origem === "trecho"), ...novos],
+        reuniao_checada: !trecho || !!atual.checagem?.reuniao_checada,
+        gerado_em: agora, modelo: MODELO_RESUMO,
+      };
+      await db.gravacoes.salvar(atual);
+    } catch (e) {
+      const atual = await db.gravacoes.uma(base);
+      if (atual) { atual.checagemErro = e.message === "Failed to fetch" ? "Sem conexão com a API." : e.message; await db.gravacoes.salvar(atual); }
+    } finally {
+      checando.delete(base);
+      mudou();
+    }
+  })();
+}
+
 // ---------------------------------------------------------------- comandos
 
 async function dispositivos() {
@@ -340,7 +408,10 @@ const comandos = {
   async ler({ base }) {
     const g = await precisa(base);
     const cfg = db.config();
-    return { texto: g.texto || "", gravacao: paraLista(g), resumo: g.resumoDados || null, resumoAtivo: cfg.resumo.ativo && !!db.chaveApi.ler(), nome: cfg.resumo.nome || null };
+    return {
+      texto: g.texto || "", gravacao: paraLista(g), resumo: g.resumoDados || null, resumoAtivo: cfg.resumo.ativo && !!db.chaveApi.ler(), nome: cfg.resumo.nome || null,
+      checagem: g.checagem || null, checando: checando.has(base), checagemErro: g.checagemErro || null, podeChecar: !!db.chaveApi.ler(),
+    };
   },
   gravar: gravarOuParar,
   importar: ({ arquivo }) => importar(arquivo),
@@ -363,6 +434,7 @@ const comandos = {
     mudou();
   },
   resumir: ({ base }) => { resumir(base); },
+  checar: ({ base, trecho, quem, tempo }) => checar(base, trecho, quem, tempo),
   async baixar({ base, ext }) {
     const g = await precisa(base);
     if (ext === "transcricao.md") {
