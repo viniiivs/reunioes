@@ -87,6 +87,21 @@ const resumoExemplo = {
   resumo: ["Proposta do cliente novo pronta, aguardando revisão de valores.", "Demo com a Ana combinada para quinta."],
   gerado_em: hoje.toISOString(), modelo: "claude-sonnet",
 };
+const checagemExemplo = {
+  itens: [
+    { afirmacao: "O Brasil tem uns 250 milhões de habitantes", quem: "Ana", tempo: "00:00:00", veredito: "fake",
+      explicacao: "O IBGE estima 213,4 milhões de habitantes em 2025, não 250 milhões.",
+      fontes: [{ titulo: "Estimativas da população | IBGE", url: "https://www.ibge.gov.br/estatisticas/sociais/populacao/9103-estimativas-de-populacao.html" }], origem: "reuniao" },
+    { afirmacao: "A LGPD vale desde 2018, com multa de até 2% do faturamento", quem: "Bruno", tempo: "00:00:07", veredito: "impreciso",
+      explicacao: "Foi sancionada em 2018, mas só vale desde 2020; a multa é de até 2% do faturamento, limitada a R$ 50 milhões por infração.",
+      fontes: [{ titulo: "Lei nº 13.709/2018 (LGPD)", url: "https://www.planalto.gov.br/ccivil_03/_ato2015-2018/2018/lei/l13709.htm" }, { titulo: "ANPD: sanções", url: "https://www.gov.br/anpd/pt-br" }], origem: "reuniao" },
+    { afirmacao: "O Pix foi lançado em novembro de 2020", quem: "Eu", tempo: "00:00:15", veredito: "fato",
+      explicacao: "O Banco Central lançou o Pix em 16 de novembro de 2020.",
+      fontes: [{ titulo: "Pix | Banco Central do Brasil", url: "https://www.bcb.gov.br/estabilidadefinanceira/pix" }], origem: "reuniao" },
+  ],
+  reuniao_checada: true, gerado_em: hoje.toISOString(), modelo: "claude-sonnet",
+};
+let checagemSim = null, checandoSim = false;
 const configExemplo = {
   pastaGravacoes: "C:\\Users\\voce\\Documents\\Reuniões", pastaMotor: "C:\\Users\\voce\\AppData\\Local\\Reunioes-motor",
   idioma: "pt", modelo: "large-v3", usarGpu: true, separarVozes: false, mic: null, saida: null,
@@ -123,7 +138,24 @@ async function simular(cmd, args) {
         estado: k > 0 && g.estado === "transcrevendo" ? "pronta" : g.estado,
         falantes: k > 0 && g.estado === "transcrevendo" ? ["Ana", "Eu"] : g.falantes,
       }))).flat();
-    case "ler": return { texto: textoExemplo, gravacao: exemplo.find((g) => g.base === args.base) || exemplo[1], resumo: q.has("semresumo") ? null : resumoExemplo, resumoAtivo: true };
+    case "ler":
+      if (checagemSim === null) checagemSim = q.has("checagem") ? structuredClone(checagemExemplo) : false;
+      return { texto: textoExemplo, gravacao: exemplo.find((g) => g.base === args.base) || exemplo[1], resumo: q.has("semresumo") ? null : resumoExemplo, resumoAtivo: true,
+        checagem: checagemSim || null, checando: checandoSim || q.has("checando"), checagemErro: q.has("checagemerro") ? "O Claude não respondeu em 6 minutos." : null, podeChecar: !q.has("semclaude") };
+    case "checar":
+      // pesquisa fictícia: 1,2 s depois chega o resultado (trecho soma no topo; reunião troca os itens)
+      checandoSim = true;
+      setTimeout(() => {
+        const base = checagemSim || { itens: [], reuniao_checada: false };
+        const trecho = args.trecho ? [{ afirmacao: args.trecho.slice(0, 90), quem: args.quem, tempo: args.tempo, veredito: "sem_dados",
+          explicacao: "Não achei fonte pública confiável sobre isso: parece um assunto interno da reunião.", fontes: [], origem: "trecho" }] : [];
+        checagemSim = args.trecho ? { ...base, itens: [...trecho, ...base.itens] }
+          : { ...structuredClone(checagemExemplo), itens: [...base.itens.filter((x) => x.origem === "trecho"), ...checagemExemplo.itens] };
+        checagemSim.gerado_em = new Date().toISOString();
+        checandoSim = false;
+        ouvintes.forEach((f) => f({ evento: "mudou" }));
+      }, 1200);
+      return null;
     case "estado": return { gravando: q.has("gravando"), servico: { rodando: true, app: q.has("nomic") ? "Zoom" : null, atalhoOk: true }, gravarSozinho: !q.has("auto0"), atalho: "ctrl+alt+g", motorPronto: true, atualizacao: { estado: q.has("upd") ? "pronta" : "atual", nova: "1.1.0", versao: "1.0.0" } };
     case "config": return { ...configExemplo };
     case "sistema": return { versao: "1.0.0", gpus: q.has("semgpu") ? ["Intel UHD Graphics"] : ["NVIDIA GeForce RTX 4060"], nvidia: !q.has("semgpu"), memoriaGB: 16, livreGB: 120.4, livreGravacoesGB: 120.4, claude: !q.has("semclaude") };

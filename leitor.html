@@ -26,7 +26,7 @@
       <p id="meta"></p>
     </div>
     <div class="ferramentas">
-      <button class="btn" id="copiar-resumo" title="Copiar o resumo (veredito, ações e tópicos)" hidden>
+      <button class="btn" id="copiar-resumo" title="Copiar o resumo (veredito, ações e tópicos)" aria-label="Copiar o resumo" hidden>
         <i class="ph ph-copy" aria-hidden="true"></i> Copiar
       </button>
       <button class="btn icone" id="pasta" title="Mostrar os arquivos na pasta" aria-label="Mostrar os arquivos na pasta">
@@ -38,6 +38,7 @@
   <div class="abas" role="tablist" aria-label="Conteúdo">
     <button role="tab" id="aba-resumo" aria-controls="painel-resumo" aria-selected="true"><i class="ph ph-sparkle" aria-hidden="true"></i>Resumo</button>
     <button role="tab" id="aba-texto" aria-controls="painel-texto" aria-selected="false"><i class="ph ph-text-align-left" aria-hidden="true"></i>Transcrição</button>
+    <button role="tab" id="aba-checagem" aria-controls="painel-checagem" aria-selected="false"><i class="ph ph-seal-check" aria-hidden="true"></i>Fato ou fake</button>
   </div>
 
   <section class="painel" id="painel-resumo" role="tabpanel" aria-labelledby="aba-resumo">
@@ -62,6 +63,11 @@
       </div>
     </div>
     <main class="texto" id="texto" aria-busy="true"></main>
+    <button class="btn primario checar-trecho" id="checar-trecho" type="button" hidden><i class="ph ph-seal-check" aria-hidden="true"></i> Checar trecho</button>
+  </section>
+
+  <section class="painel" id="painel-checagem" role="tabpanel" aria-labelledby="aba-checagem" hidden>
+    <div class="resumo" id="checagem"></div>
   </section>
 
   <div class="aviso" id="aviso" role="status"></div>

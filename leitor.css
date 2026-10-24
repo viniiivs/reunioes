@@ -86,6 +86,45 @@
   color: var(--faint); font-size: 12px;
 }
 
+/* ---- fato ou fake ---- */
+.veredito-topo.alerta { background: var(--alerta-soft); }
+.veredito-topo.alerta .ph { color: var(--alerta); }
+.erro-linha { display: flex; align-items: center; gap: 6px; margin: 12px 0 0; color: var(--danger-texto); font-size: 13px; }
+.vazio .erro-linha { margin: 0 0 14px; }
+.checagem-lista { list-style: none; margin: 8px 0 0; padding: 0 !important; }
+.checagem-lista .checado {
+  display: grid; gap: 4px; margin: 0 !important; padding: 14px 0;
+  border-top: 1px solid var(--line); line-height: 1.5;
+}
+.checagem-lista .checado:first-child { border-top: 0; }
+.checado-topo { display: flex; align-items: center; flex-wrap: wrap; gap: 4px 8px; margin-bottom: 2px; }
+.checado-topo small { color: var(--muted); font-size: 12px; }
+.checado b { font-weight: 600; line-height: 1.4; overflow-wrap: anywhere; }
+.checado p { margin: 0; overflow-wrap: anywhere; }
+.fontes { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 4px; min-width: 0; }
+.fonte {
+  display: inline-flex; align-items: center; gap: 4px; max-width: 100%;
+  height: 24px; padding: 0 10px; border-radius: 999px;
+  background: var(--surface-2); color: var(--accent); font: 500 12px/1 var(--font); text-decoration: none;
+}
+.fonte span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.fonte .ph { flex: none; font-size: 13px; }
+@media (hover: hover) {
+  .fonte:hover { background: var(--hover); }
+  .fonte:hover span { text-decoration: underline; text-underline-offset: 2px; }
+}
+/* no toque: alvos de 40 px (o carimbo cresce só na área de toque, não no desenho) */
+@media (pointer: coarse) {
+  .fonte { height: 40px; padding: 0 14px; }
+  .btn.checar-trecho { height: 40px; padding: 0 16px; }
+  .tempo-link { position: relative; }
+  .tempo-link::after { content: ""; position: absolute; inset: -12px -6px; }
+}
+
+/* botão que aparece junto do trecho selecionado na transcrição */
+.checar-trecho { position: fixed; z-index: 5; box-shadow: var(--shadow); }
+.checar-trecho[hidden] { display: none; }
+
 /* ---- transcricao ---- */
 .barra-texto {
   display: flex; align-items: center; justify-content: space-between; gap: 12px; flex: none;
