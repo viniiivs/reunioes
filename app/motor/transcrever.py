@@ -30,6 +30,7 @@ LIMIAR = 0.55  # similaridade de cosseno minima para reconhecer uma voz conhecid
 import numpy as np  # noqa: E402
 import torch  # noqa: E402  (importar antes do whisperx expoe cublas/cudnn do torch ao ctranslate2)
 import whisperx  # noqa: E402
+from huggingface_hub.errors import LocalEntryNotFoundError  # noqa: E402
 
 
 def hms(s):
@@ -68,6 +69,16 @@ PESO_ASR, PESO_VOZES = 1.0, 0.5   # cada canal transcrito; separar as vozes (pya
 FATIA_ALINHAR = 0.2               # dentro de uma transcricao: 80% reconhecer a fala, 20% alinhar as palavras
 
 
+def carregar(modelo, device, ct, idioma):
+    """Usa o modelo ja baixado sem consultar o Hugging Face (a consulta online levava ~2 min por carga).
+    So vai a internet se ele ainda nao estiver na pasta de modelos."""
+    kw = {"compute_type": ct, "language": idioma, "asr_options": {"beam_size": 5}}
+    try:
+        return whisperx.load_model(modelo, device, local_files_only=True, **kw)
+    except LocalEntryNotFoundError:
+        return whisperx.load_model(modelo, device, **kw)
+
+
 def asr(audio, modelo, device, idioma, avancar=lambda f: None):
     """Transcreve + alinha palavra a palavra. Tenta float16 e cai para int8 se a GPU reclamar.
     avancar(f) recebe o andamento desta transcricao, de 0 a 1."""
@@ -77,8 +88,7 @@ def asr(audio, modelo, device, idioma, avancar=lambda f: None):
     for i, ct in enumerate(tipos):
         m = None
         try:
-            m = whisperx.load_model(modelo, device, compute_type=ct, language=idioma,
-                                    asr_options={"beam_size": 5})
+            m = carregar(modelo, device, ct, idioma)
             r = m.transcribe(audio, batch_size=8 if device == "cuda" else 4, language=idioma,
                              progress_callback=lambda p: avancar(p / 100 * (1 - FATIA_ALINHAR)))
             print(f"  [asr] {modelo} / {device} / {ct}", flush=True)
