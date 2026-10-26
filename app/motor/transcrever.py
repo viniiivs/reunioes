@@ -21,6 +21,9 @@ import argparse
 import gc
 import json
 import os
+import subprocess
+import threading
+import time
 
 import comum
 
@@ -80,47 +83,130 @@ def carregar(modelo, device, ct, idioma):
         return whisperx.load_model(modelo, device, **kw)
 
 
+class Transbordou(Exception):
+    """A placa passou a usar a memoria do PC: o modo atual nao cabe mais."""
+
+
+class Vigia:
+    """Sem folga na placa, o driver da NVIDIA empresta a memoria do PC em vez de dar erro, e tudo fica
+    dezenas de vezes mais lento (parece travado). De 20 em 20 s, mede quanto este processo pegou
+    emprestado (contador "GPU Process Memory" do Windows); duas medidas seguidas acima do limite =
+    transbordou, e conferir() interrompe a etapa para ela continuar num modo mais leve."""
+
+    LIMITE_GB = 1.0   # normal fica abaixo de 0,2 GB; transbordando passou de 2,5 GB
+
+    def __init__(self):
+        self.emprestado, self.seguidas = 0.0, 0
+        if os.name == "nt":
+            threading.Thread(target=self._rodar, daemon=True).start()
+
+    def medir(self):
+        cmd = (f"$s = (Get-Counter '\\GPU Process Memory(pid_{os.getpid()}_*)\\Shared Usage' -EA Stop).CounterSamples;"
+               " [int64](($s | Measure-Object CookedValue -Sum).Sum)")
+        try:
+            out = subprocess.run(["powershell", "-NoProfile", "-NonInteractive", "-Command", cmd], capture_output=True,
+                                 text=True, timeout=30, creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0)).stdout
+            gb = int(out.strip() or 0) / 2**30
+        except (OSError, ValueError, subprocess.SubprocessError):
+            gb = 0.0   # sem contador (outro Windows, sem permissao): nao vigia
+        self.emprestado = gb
+        self.seguidas = self.seguidas + 1 if gb > self.LIMITE_GB else 0
+        return gb
+
+    def _rodar(self):
+        while True:
+            time.sleep(20)
+            self.medir()
+
+    def conferir(self):
+        if self.seguidas >= 2:
+            self.seguidas = 0
+            raise Transbordou(f"a placa pegou {self.emprestado:.1f} GB da memoria do PC")
+
+    def zerar(self):
+        self.seguidas = 0
+
+
+vigia = Vigia()
+
+
 def modos(device):
-    """(compute_type, lote) em ordem de preferencia, pela memoria livre na placa agora.
-    Sem folga, o driver da NVIDIA empresta a RAM do PC em vez de dar erro e tudo fica dezenas de vezes
-    mais lento. Medido numa GTX 1660 SUPER de 6 GB com ~3 GB livres (26/10/2026), 5 min de audio:
-    float16 lote 8 transbordou e nao terminou em 6 min; int8_float16 lote 4 levou 40 s, mesmo texto."""
+    """(device, compute_type, lote) em ordem de preferencia, pela memoria livre na placa agora; o ultimo
+    e sempre o processador (lento, mas nunca trava). Medido numa GTX 1660 SUPER de 6 GB com ~3 GB livres
+    (26/10/2026), 5 min de audio: float16 lote 8 transbordou e nao terminou em 6 min; int8_float16
+    lote 4 levou 40 s, mesmo texto. REUNIOES_MODOS="float16:8,int8_float16:4" forca a lista (testes)."""
+    forcado = os.environ.get("REUNIOES_MODOS")
+    if forcado:
+        return [(device, ct, int(lote)) for ct, lote in (x.split(":") for x in forcado.split(","))] + [("cpu", "int8", 4)]
     if device != "cuda":
-        return [("int8", 4)]
+        return [("cpu", "int8", 4)]
     livre = torch.cuda.mem_get_info()[0] / 2**30
     if livre >= 8:
-        return [("float16", 8), ("int8_float16", 4), ("int8", 2)]
-    if livre >= 6:
-        return [("int8_float16", 8), ("int8_float16", 4), ("int8", 2)]
-    return [("int8_float16", 4), ("int8", 2)]
+        gpu = [("float16", 8), ("int8_float16", 4), ("int8", 2)]
+    elif livre >= 6:
+        gpu = [("int8_float16", 8), ("int8_float16", 4), ("int8", 2)]
+    else:
+        gpu = [("int8_float16", 4), ("int8", 2)]
+    return [("cuda", ct, lote) for ct, lote in gpu] + [("cpu", "int8", 4)]
+
+
+def na_placa_ou_no_processador(device, fazer, nome):
+    """Roda fazer(device); se a placa transbordar no meio, refaz no processador."""
+    try:
+        return fazer(device)
+    except Transbordou as e:
+        if device == "cpu":
+            raise
+        print(f"  [aviso] {nome}: {e}; continuando no processador", flush=True)
+        liberar()
+        vigia.zerar()
+        return fazer("cpu")
 
 
 def asr(audio, modelo, device, idioma, avancar=lambda f: None):
-    """Transcreve + alinha palavra a palavra. Escolhe o modo que cabe na placa e cai para o seguinte
-    se a GPU reclamar. avancar(f) recebe o andamento desta transcricao, de 0 a 1."""
+    """Transcreve + alinha palavra a palavra. Escolhe o modo que cabe na placa e passa para o seguinte
+    se a GPU reclamar ou transbordar. avancar(f) recebe o andamento desta transcricao, de 0 a 1."""
     avancar(0)
     tentativas = modos(device)
     r = None
-    for i, (ct, lote) in enumerate(tentativas):
+
+    def andou(p):
+        vigia.conferir()
+        avancar(p / 100 * (1 - FATIA_ALINHAR))
+
+    for i, (dev, ct, lote) in enumerate(tentativas):
         m = None
         try:
-            m = carregar(modelo, device, ct, idioma)
-            r = m.transcribe(audio, batch_size=lote, language=idioma,
-                             progress_callback=lambda p: avancar(p / 100 * (1 - FATIA_ALINHAR)))
-            print(f"  [asr] {modelo} / {device} / {ct} / lote {lote}", flush=True)
+            vigia.zerar()
+            m = carregar(modelo, dev, ct, idioma)
+            if dev == "cuda" and vigia.medir() > Vigia.LIMITE_GB:   # ja carregou transbordando
+                raise Transbordou(f"o modelo nao coube na placa ({vigia.emprestado:.1f} GB na memoria do PC)")
+            r = m.transcribe(audio, batch_size=lote, language=idioma, progress_callback=andou)
+            print(f"  [asr] {modelo} / {dev} / {ct} / lote {lote}", flush=True)
             break
         except Exception as e:  # noqa: BLE001
             if i == len(tentativas) - 1:
                 raise
-            print(f"  [aviso] {ct} lote {lote} falhou ({str(e).splitlines()[0][:100]}), tentando o proximo", flush=True)
+            print(f"  [aviso] {dev} {ct} lote {lote} falhou ({str(e).splitlines()[0][:100]}), tentando o proximo", flush=True)
         finally:
             del m
             liberar()
+
+    def alinhar(dev):
+        vigia.zerar()
+        al, meta = whisperx.load_align_model(language_code=idioma, device=dev, model_name=comum.alinhamento_local(idioma))
+
+        def andou_al(p):
+            vigia.conferir()
+            avancar(1 - FATIA_ALINHAR + p / 100 * FATIA_ALINHAR)
+        try:
+            return whisperx.align(r["segments"], al, meta, audio, dev, return_char_alignments=False,
+                                  progress_callback=andou_al)
+        finally:
+            del al
+            liberar()
     try:
-        al, meta = whisperx.load_align_model(language_code=idioma, device=device, model_name=comum.alinhamento_local(idioma))
-        r = whisperx.align(r["segments"], al, meta, audio, device, return_char_alignments=False,
-                           progress_callback=lambda p: avancar(1 - FATIA_ALINHAR + p / 100 * FATIA_ALINHAR))
-        del al
+        r = na_placa_ou_no_processador(device, alinhar, "alinhamento")
     except Exception as e:  # noqa: BLE001  (idioma sem modelo de alinhamento: fica sem tempo por palavra)
         print(f"  [aviso] sem alinhamento por palavra: {str(e).splitlines()[0][:100]}", flush=True)
     liberar()
@@ -232,11 +318,21 @@ def main():
         avancar = prog.etapa(PESO_VOZES)
         avancar(0)
         from whisperx.diarize import DiarizationPipeline
-        dz = DiarizationPipeline(token=token, device=device, cache_dir=os.environ.get("HF_HOME"))
         kw = {"num_speakers": a.falantes} if a.falantes else {}
-        df, emb = dz(audio, return_embeddings=True, progress_callback=lambda p: avancar(p / 100), **kw)
-        del dz
-        liberar()
+
+        def separar_vozes(dev):
+            vigia.zerar()
+            dz = DiarizationPipeline(token=token, device=dev, cache_dir=os.environ.get("HF_HOME"))
+
+            def andou(p):
+                vigia.conferir()
+                avancar(p / 100)
+            try:
+                return dz(audio, return_embeddings=True, progress_callback=andou, **kw)
+            finally:
+                del dz
+                liberar()
+        df, emb = na_placa_ou_no_processador(device, separar_vozes, "separar vozes")
         r = whisperx.assign_word_speakers(df, r)
         emb = emb or {}
         nomes = reconhecer(emb)

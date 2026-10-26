@@ -24,6 +24,7 @@ Resumo vivo do projeto: decisões, o que está pronto, o que falta e onde fica c
 - Selo (`.selo` em base.css) é componente único: "Recomendada" nas Configurações e veredito do Fato ou fake; cores por tokens --ok/--alerta/--danger-texto.
 - O motor escreve o próprio log (`REUNIOES_LOG`, stdout/stderr redirecionados no Python): fechar ou atualizar o app no meio não corta mais o andamento (antes o app lia por pipe e o log parava). A lista relê o log de 5 em 5 s, porque o Windows nem sempre avisa que um arquivo aberto cresceu. Atualizar fica bloqueado durante transcrição.
 - Modo da transcrição pela memória livre na placa: ≥ 8 GB float16 lote 8; ≥ 6 GB int8_float16 lote 8; menos, int8_float16 lote 4. GTX 1660 SUPER com ~3 GB livres (3 monitores + Wallpaper Engine usam ~3 GB): float16 lote 8 transbordava (2,7 GB emprestados, parado horas); int8_float16 lote 4 = 7,6× tempo real, mesmo texto.
+- Vigia de transbordo (transcrever.py, `Vigia`): a cada 20 s mede a memória do PC emprestada à placa (contador "GPU Process MemoryShared Usage" do Windows); 2 medidas > 1 GB = interrompe a etapa e segue num modo mais leve; o último modo é sempre o processador. Vale para texto, alinhamento e vozes. Testado 26/10/2026 forçando float16 lote 16: detectou 2,5 e 3,2 GB e terminou em int8_float16 lote 4. `REUNIOES_MODOS` força a lista (testes).
 - Commits sem coautoria/atribuição de IA.
 
 ## Feito (versões)
@@ -36,6 +37,7 @@ Resumo vivo do projeto: decisões, o que está pronto, o que falta e onde fica c
 - 1.0.16 Fato ou fake checa todas as afirmações, no contexto, sempre com fonte; filtros por veredito (24/10/2026)
 - 1.0.17 transcrição não trava mais na tela: log escrito pelo motor, lista relê a porcentagem, não atualiza no meio de uma transcrição (24/10/2026)
 - 1.0.18 transcrição escolhe o modo pela memória livre da placa (GTX 1660: de "travada" para ~7× tempo real), 26/10/2026
+- 1.0.19 vigia de transbordo: se outro programa ocupar a placa no meio, a transcrição troca de modo (ou vai para o processador) em vez de travar, 26/10/2026
 
 ## Pendente / conhecido
 - Gravações curtas mostram "0 falantes".
