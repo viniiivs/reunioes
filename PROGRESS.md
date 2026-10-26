@@ -23,6 +23,7 @@ Resumo vivo do projeto: decisões, o que está pronto, o que falta e onde fica c
 - Mais de 5 itens: chips de filtro por veredito (mesmo componente `.pessoa` do filtro da transcrição).
 - Selo (`.selo` em base.css) é componente único: "Recomendada" nas Configurações e veredito do Fato ou fake; cores por tokens --ok/--alerta/--danger-texto.
 - O motor escreve o próprio log (`REUNIOES_LOG`, stdout/stderr redirecionados no Python): fechar ou atualizar o app no meio não corta mais o andamento (antes o app lia por pipe e o log parava). A lista relê o log de 5 em 5 s, porque o Windows nem sempre avisa que um arquivo aberto cresceu. Atualizar fica bloqueado durante transcrição.
+- Modo da transcrição pela memória livre na placa: ≥ 8 GB float16 lote 8; ≥ 6 GB int8_float16 lote 8; menos, int8_float16 lote 4. GTX 1660 SUPER com ~3 GB livres (3 monitores + Wallpaper Engine usam ~3 GB): float16 lote 8 transbordava (2,7 GB emprestados, parado horas); int8_float16 lote 4 = 7,6× tempo real, mesmo texto.
 - Commits sem coautoria/atribuição de IA.
 
 ## Feito (versões)
@@ -45,4 +46,4 @@ Resumo vivo do projeto: decisões, o que está pronto, o que falta e onde fica c
 - Tempo do Fato ou fake numa reunião real de 1 h não medido (só amostras fictícias).
 - Fontes da checagem às vezes vêm da imprensa em vez do órgão oficial, mesmo com o prompt pedindo o oficial primeiro.
 - Progresso da etapa "separar vozes" não testado com token do Hugging Face.
-- Transcrição lenta na GTX 1660 SUPER: ~1× tempo real (24 min de áudio → ~25 min só reconhecendo, float16, lotes de 8). A porcentagem anda aos saltos, um lote (~4 min) por vez. Suspeita: VRAM quase cheia (5,4 de 6 GB) com outros apps usando a GPU; testar batch menor/int8_float16 (24/10/2026).
+- RESOLVIDO 26/10/2026: lentidão/"travada" era a placa transbordando (driver NVIDIA empresta RAM do PC em vez de dar erro). Motor agora escolhe o modo pela memória livre (`modos()` em transcrever.py).

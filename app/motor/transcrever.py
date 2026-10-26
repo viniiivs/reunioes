@@ -80,24 +80,39 @@ def carregar(modelo, device, ct, idioma):
         return whisperx.load_model(modelo, device, **kw)
 
 
+def modos(device):
+    """(compute_type, lote) em ordem de preferencia, pela memoria livre na placa agora.
+    Sem folga, o driver da NVIDIA empresta a RAM do PC em vez de dar erro e tudo fica dezenas de vezes
+    mais lento. Medido numa GTX 1660 SUPER de 6 GB com ~3 GB livres (26/10/2026), 5 min de audio:
+    float16 lote 8 transbordou e nao terminou em 6 min; int8_float16 lote 4 levou 40 s, mesmo texto."""
+    if device != "cuda":
+        return [("int8", 4)]
+    livre = torch.cuda.mem_get_info()[0] / 2**30
+    if livre >= 8:
+        return [("float16", 8), ("int8_float16", 4), ("int8", 2)]
+    if livre >= 6:
+        return [("int8_float16", 8), ("int8_float16", 4), ("int8", 2)]
+    return [("int8_float16", 4), ("int8", 2)]
+
+
 def asr(audio, modelo, device, idioma, avancar=lambda f: None):
-    """Transcreve + alinha palavra a palavra. Tenta float16 e cai para int8 se a GPU reclamar.
-    avancar(f) recebe o andamento desta transcricao, de 0 a 1."""
+    """Transcreve + alinha palavra a palavra. Escolhe o modo que cabe na placa e cai para o seguinte
+    se a GPU reclamar. avancar(f) recebe o andamento desta transcricao, de 0 a 1."""
     avancar(0)
-    tipos = ("float16", "int8_float16", "int8") if device == "cuda" else ("int8",)
+    tentativas = modos(device)
     r = None
-    for i, ct in enumerate(tipos):
+    for i, (ct, lote) in enumerate(tentativas):
         m = None
         try:
             m = carregar(modelo, device, ct, idioma)
-            r = m.transcribe(audio, batch_size=8 if device == "cuda" else 4, language=idioma,
+            r = m.transcribe(audio, batch_size=lote, language=idioma,
                              progress_callback=lambda p: avancar(p / 100 * (1 - FATIA_ALINHAR)))
-            print(f"  [asr] {modelo} / {device} / {ct}", flush=True)
+            print(f"  [asr] {modelo} / {device} / {ct} / lote {lote}", flush=True)
             break
         except Exception as e:  # noqa: BLE001
-            if i == len(tipos) - 1:
+            if i == len(tentativas) - 1:
                 raise
-            print(f"  [aviso] {ct} falhou ({str(e).splitlines()[0][:100]}), tentando o proximo", flush=True)
+            print(f"  [aviso] {ct} lote {lote} falhou ({str(e).splitlines()[0][:100]}), tentando o proximo", flush=True)
         finally:
             del m
             liberar()
