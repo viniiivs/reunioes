@@ -35,6 +35,7 @@ Resumo vivo do projeto: decisões, o que está pronto, o que falta e onde fica c
 - 1.0.15 Fato ou fake no leitor (aba própria + "Checar trecho" ao selecionar texto), 23/10/2026
 - 1.0.16 Fato ou fake checa todas as afirmações, no contexto, sempre com fonte; filtros por veredito (24/10/2026)
 - 1.0.17 transcrição não trava mais na tela: log escrito pelo motor, lista relê a porcentagem, não atualiza no meio de uma transcrição (24/10/2026)
+- 1.0.18 transcrição escolhe o modo pela memória livre da placa (GTX 1660: de "travada" para ~7× tempo real), 26/10/2026
 
 ## Pendente / conhecido
 - Gravações curtas mostram "0 falantes".
