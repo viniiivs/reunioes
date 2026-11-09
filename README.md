@@ -2,7 +2,7 @@
 
 Grava suas reuniões, transcreve no seu próprio computador e diz o que ficou para você fazer.
 
-**[⬇ Baixar para Windows](https://github.com/viniiivs/reunioes/releases/latest/download/Reunioes-win-Setup.exe)** · Windows 10 e 11, 64 bits
+**[⬇ Baixar para Windows](https://github.com/viniiivs/reunioes/releases/latest/download/Reunioes-win-Setup.exe)** · versão 1.0.19 · Windows 10 e 11, 64 bits
 
 **[🌐 Usar no navegador](https://viniiivs.github.io/reunioes/)** · sem instalar, no Chrome ou no Edge
 
@@ -14,8 +14,10 @@ Grava suas reuniões, transcreve no seu próprio computador e diz o que ficou pa
 - **Grava sozinho quando a reunião começa**: percebe quando um app de chamada (Teams, Meet, Discord, Zoom, Slack, Webex...) usa o microfone, e para quando a chamada acaba. Mutar o microfone não interrompe.
 - **Atalho global** para gravar e parar, mesmo com o app fechado (padrão: Ctrl + Alt + G).
 - **Transcreve no seu computador** com WhisperX. O áudio nunca sai da sua máquina. Com placa de vídeo NVIDIA, uma reunião de 30 minutos fica pronta em poucos minutos; sem ela, funciona pelo processador (mais devagar).
+- **Se ajusta à sua placa de vídeo**: escolhe o modo de transcrição pela memória livre da placa, inclusive em placas de 6 GB com outros programas abertos. Se a memória acabar no meio, continua num modo mais leve (ou no processador) em vez de travar.
+- **Mostra o andamento** da transcrição em porcentagem na lista. Dá para pausar e retomar sem perder o que já foi feito, passar uma reunião para o começo da fila e fechar o app no meio: a transcrição continua.
 - **Separa as vozes** de cada pessoa (opcional) e aprende os nomes: dê nome a "Falante 1" uma vez e ele reconhece nas próximas reuniões.
-- **Resumo com IA** (opcional, com o [Claude Code](https://claude.com/product/claude-code)): lista as tarefas que são suas, com o trecho da reunião que comprova cada uma.
+- **Resumo com IA** (opcional, com o [Claude Code](https://claude.com/product/claude-code)): lista as tarefas que são suas, com o trecho da reunião que comprova cada uma. Marque as tarefas como feitas e copie o resumo com um clique.
 - **Fato ou fake** (opcional, também com o Claude Code): confere na web o que foi dito na reunião (números, datas, leis, notícias) e mostra se é fato, fake ou impreciso, com uma frase de explicação e a fonte. Para checar só uma frase, selecione o trecho na transcrição.
 - **Atualiza sozinho**: baixa versões novas em segundo plano e avisa quando é só reiniciar.
 
@@ -52,6 +54,16 @@ Em **[viniiivs.github.io/reunioes](https://viniiivs.github.io/reunioes/)**, com 
 - Funciona offline depois do primeiro uso e pode ser instalada como app (ícone na barra de endereço).
 
 O que só o app de Windows faz: gravar sozinho quando a reunião começa, atalho global e separar as vozes de cada pessoa.
+
+## Novidades
+
+- **1.0.19** (26/10/2026): a transcrição não trava mais quando a placa de vídeo fica sem memória no meio do caminho; ela percebe e continua num modo mais leve, ou no processador.
+- **1.0.18** (26/10/2026): transcrição muito mais rápida em placas com pouca memória livre; o app escolhe o modo que cabe na placa em vez de usar a memória do PC, que deixava tudo parado.
+- **1.0.17** (24/10/2026): a porcentagem se atualiza sozinha, fechar ou atualizar o app no meio não corta a transcrição, e o app não se atualiza durante uma.
+- **1.0.16** (24/10/2026): o Fato ou fake confere todas as afirmações, no contexto da conversa e sempre com fonte, com filtro por veredito.
+
+O app instalado se atualiza sozinho. Histórico completo em [Releases](https://github.com/viniiivs/reunioes/releases).
+
 ## Privacidade
 
 Gravação e transcrição acontecem no seu computador. Só sai daqui:
@@ -71,7 +83,7 @@ Pelo Windows, em **Configurações > Aplicativos > Reuniões > Desinstalar**. O 
 dotnet run --project app
 
 # gerar o instalador (build\releases) e publicar uma versão nova
-.\build\publicar.ps1 -Versao 1.0.7 -Publicar
+.\build\publicar.ps1 -Versao 1.0.20 -Publicar
 
 # montar a versão web (build\web) e publicar no GitHub Pages
 .\build\web.ps1 -Publicar
