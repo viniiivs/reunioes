@@ -23,6 +23,8 @@ Grava suas reuniões, transcreve no seu próprio computador e diz o que ficou pa
 
 ![Resumo de uma reunião](docs/resumo.png)
 
+![Fato ou fake](docs/checagem.png)
+
 ## Instalação
 
 1. Baixe o **[Reunioes-win-Setup.exe](https://github.com/viniiivs/reunioes/releases/latest/download/Reunioes-win-Setup.exe)** e abra. Não precisa de administrador.
@@ -87,6 +89,9 @@ dotnet run --project app
 
 # montar a versão web (build\web) e publicar no GitHub Pages
 .\build\web.ps1 -Publicar
+
+# refazer os prints deste README (docs\*.png) com dados fictícios
+py build\prints.py
 ```
 
 O app é .NET 8 (WinForms + WebView2) com a interface em HTML/CSS/JS (`app/wwwroot`). O motor é Python (`app/motor`), instalado pelo próprio app com o [uv](https://github.com/astral-sh/uv). Instalador e atualizações: [Velopack](https://velopack.io). A versão web usa as mesmas telas com o motor em `web/` (IndexedDB, MediaRecorder e Whisper via Transformers.js). Comparação dos estilos visuais em `prototipos/` (`py prototipos\servir.py`).

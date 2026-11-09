@@ -8,6 +8,7 @@ Resumo vivo do projeto: decisões, o que está pronto, o que falta e onde fica c
 - `web/` — versão web (mesmas telas; transcrição no navegador com Transformers.js, dados no IndexedDB).
 - `build/publicar.ps1 -Versao X -Publicar` — instalador + auto-update (Velopack) no GitHub Releases.
 - `build/web.ps1 -Publicar` — publica a versão web no GitHub Pages (branch gh-pages).
+- `build/prints.py` — refaz os prints do README (`docs/*.png`) pelo simulador da ponte, com a versão da última tag (09/11/2026: prints refeitos para a 1.0.19, + `checagem.png`).
 - `testes/` — testes do layout das pastas e da detecção de gravação (`dotnet run --project testes`).
 
 ## Decisões
