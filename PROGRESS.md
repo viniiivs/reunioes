@@ -45,7 +45,7 @@ Resumo vivo do projeto: decisões, o que está pronto, o que falta e onde fica c
 - 1.0.20 addons (abas extras por pasta local, tipos claude/comando, trecho, selos); Fato ou fake vira addon externo, 10/11/2026
 
 ## Pendente / conhecido
-- 1.0.24 (10/11/2026):
+- 1.0.24 publicada (10/11/2026):
   - IA: resumo e addons rodam no Claude Code OU no Codex (conta ChatGPT). `app/Ia.cs` (antes Claude.cs) escolhe: addon com "ia" exigida > Config.Ia > a instalada (Claude primeiro). Codex: `codex exec --ephemeral --ignore-user-config --ignore-rules -s read-only --disable shell_tool -c web_search=live|disabled -c model_reasoning_effort=low|medium|high -c model_instructions_file=<prompt>` (+ `--output-schema`); stdout = resposta, stderr traz "model: ...". Antes checa `codex login status` (sem login o exec fica ~30 s tentando). Pelo npm usa o codex.exe de dentro de @openai/codex (o .cmd passa pelo cmd.exe; pastas ".codex-xxxx" são sobras de update, ignoradas). Testes reais: REUNIOES_TESTE_CODEX=1 / REUNIOES_TESTE_CLAUDE=1.
   - Gravar sozinho por app: Config.GravarSozinhoSem (ids teams, meet, zoom, discord, slack, webex, skype, jitsi, whereby); `plataforma()` em servico.py; vale também para aba de navegador.
   - Claude Code: PATH relido do registro, npm/winget, aviso quando só existe o app Claude Desktop.
