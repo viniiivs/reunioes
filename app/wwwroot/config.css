@@ -90,7 +90,7 @@
 .status-linha.ok { color: var(--accent); font-weight: 600; }
 .status-linha.ruim { color: var(--danger); }
 .revela[hidden] { display: none; }
-.grade-sw { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 2px 10px; max-width: 680px; }   /* interruptores curtos lado a lado */
+.grade-sw { display: grid; grid-template-columns: repeat(3, max-content); column-gap: 40px; }   /* interruptores curtos lado a lado: coluna do tamanho do maior nome, switch junto dele */
 .revela { display: grid; gap: 16px; margin: 6px 0 0 44px; }
 
 /* instalacao */
