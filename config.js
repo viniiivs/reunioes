@@ -5,6 +5,7 @@ import { esc } from "./fmt.js";
 // Uma pagina, dois modos: ?modo=setup e o assistente da primeira execucao (uma secao por passo);
 // sem isso e a tela de Configuracoes (todas as secoes, menu lateral, barra de salvar).
 const SETUP = new URLSearchParams(location.search).get("modo") === "setup";
+const RETOMAR = SETUP && new URLSearchParams(location.search).has("instalar");   // voltou de uma atualização pedida pelo erro da instalação
 const $ = (s) => document.querySelector(s);
 const conteudo = $("#conteudo");
 const rodape = $("#rodape");
@@ -58,7 +59,7 @@ function rBoasVindas() {
       <li><i class="ph ph-waveform"></i><div><b>Sua voz e a dos outros em faixas separadas</b><span>Grava o microfone e o som do computador ao mesmo tempo, sem perder qualidade.</span></div></li>
       <li><i class="ph ph-lock-simple"></i><div><b>Transcrição no seu computador</b><span>O áudio nunca sai da sua máquina. A IA de transcrição roda aqui mesmo.</span></div></li>
       <li><i class="ph ph-lightning"></i><div><b>Grava sozinho quando a reunião começa</b><span>Percebe quando um app de chamada (Teams, Meet, Discord, Zoom...) usa o microfone.</span></div></li>
-      <li><i class="ph ph-sparkle"></i><div><b>Resumo com o que é seu</b><span>Opcional: o Claude lê a transcrição e lista as suas tarefas, com o trecho que comprova cada uma.</span></div></li>
+      <li><i class="ph ph-sparkle"></i><div><b>Resumo com o que é seu</b><span>Opcional: a IA (Claude ou ChatGPT) lê a transcrição e lista as suas tarefas, com o trecho que comprova cada uma.</span></div></li>
     </ul>
     <p class="credito">Feito por Vinícius Vieira <span aria-hidden="true">·</span> <a data-link="${GITHUB}">github.com/viniiivs</a></p>`;
 }
@@ -121,7 +122,7 @@ function rTranscricao() {
 }
 function lTranscricao() {
   cfg.idioma = $("#idioma").value;
-  cfg.modelo = document.querySelector(".opcao[aria-checked=true]")?.dataset.modelo || cfg.modelo;
+  cfg.modelo = document.querySelector(".opcao[data-modelo][aria-checked=true]")?.dataset.modelo || cfg.modelo;
   cfg.usarGpu = ligado("usarGpu");
   cfg.separarVozes = ligado("separarVozes");
   const t = $("#token").value.trim();
@@ -147,12 +148,22 @@ function rAudio() {
 }
 function lAudio() { cfg.mic = $("#mic").value || null; cfg.saida = $("#saida").value || null; }
 
+// Plataformas da gravação automática (os ids batem com plataforma() no servico.py).
+const APPS_AUTO = [
+  ["teams", "Teams"], ["meet", "Google Meet"], ["zoom", "Zoom"], ["discord", "Discord"], ["slack", "Slack"],
+  ["webex", "Webex"], ["skype", "Skype"], ["jitsi", "Jitsi"], ["whereby", "Whereby"],
+];
+
 function rExtras() {
+  const sem = cfg.gravarSozinhoSem || [];
   return `
     <h2>Gravação</h2>
     <p class="lead">Você pode gravar pelo botão no app, pelo atalho de teclado ou deixar que ele perceba a reunião sozinho.</p>
     <div class="pilha">
       ${interruptor("gravarSozinho", cfg.gravarSozinho, "Gravar sozinho quando uma reunião começar", "Começa quando um app de chamada (Teams, Meet, Discord, Zoom...) usa o microfone e para quando ele solta. Toca um bipe ao começar e ao parar.")}
+      <div class="revela" id="appsAuto" ${cfg.gravarSozinho ? "" : "hidden"}>
+        <div class="grade-sw" role="group" aria-label="Apps da gravação automática">${APPS_AUTO.map(([id, nome]) => interruptor(`auto-${id}`, !sem.includes(id), nome)).join("")}</div>
+      </div>
       <label class="campo"><span>Atalho para gravar e parar</span>
         <select id="atalho">${ATALHOS.map(([v, n]) => `<option value="${v}" ${(cfg.atalho || "") === v ? "selected" : ""}>${n}</option>`).join("")}</select>
         <small>Funciona com o app fechado.</small>
@@ -164,23 +175,39 @@ function rExtras() {
 }
 function lExtras() {
   cfg.gravarSozinho = ligado("gravarSozinho");
+  cfg.gravarSozinhoSem = APPS_AUTO.map(([id]) => id).filter((id) => !ligado(`auto-${id}`));
   cfg.atalho = $("#atalho").value || null;
   cfg.iniciarComWindows = ligado("iniciarComWindows");
   if (SETUP) cfg.atualizarSozinho = ligado("atualizarSozinho");
 }
 
+// Resumo e addons rodam no Claude Code (conta do Claude) ou no Codex (conta do ChatGPT).
+const IAS = [
+  { id: "claude", nome: "Claude", app: "Claude Code" },
+  { id: "codex", nome: "ChatGPT", app: "Codex" },
+];
+const temIa = () => !!(sis.claude || sis.codex);
+const iaAtual = () => ({ claude: sis.claude, codex: sis.codex }[cfg.ia] ? cfg.ia : sis.claude ? "claude" : sis.codex ? "codex" : null);
+
 function rResumo() {
-  const r = cfg.resumo;
+  const r = cfg.resumo, ok = temIa();
   return `
     <h2>Resumo com IA</h2>
-    <p class="lead">Opcional. Depois de transcrever, o Claude lê o texto e diz se você precisa fazer alguma coisa.</p>
+    <p class="lead">Opcional. Depois de transcrever, a IA lê o texto e diz se você precisa fazer alguma coisa.</p>
     <div class="pilha">
-      ${sis.claude ? "" : `
-        <div class="guia">Precisa do <b>Claude Code</b> instalado e com login feito neste computador. Ele usa a sua conta do Claude.
-          <button class="link-ext" data-link="https://claude.com/product/claude-code">Como instalar</button>
+      ${ok ? "" : `
+        <div class="guia">Precisa do <b>Claude Code</b> (conta do Claude) ou do <b>Codex</b> (conta do ChatGPT) instalado e com login feito neste computador.
+          <button class="link-ext" data-link="https://claude.com/product/claude-code">Instalar o Claude Code</button>
+          <span aria-hidden="true"> · </span><button class="link-ext" data-link="https://developers.openai.com/codex/cli">Instalar o Codex</button>
           <span aria-hidden="true"> · </span><button class="link-ext" id="checarClaude">Já instalei, verificar de novo</button></div>`}
-      ${interruptor("resumoAtivo", r.ativo && sis.claude, "Resumir as reuniões", "Só o texto da transcrição vai para o Claude. O áudio continua no seu computador.", !sis.claude)}
-      <div class="revela" id="resumoCampos" ${r.ativo && sis.claude ? "" : "hidden"}>
+      ${sis.claude && sis.codex ? `
+        <div class="campo"><span>IA</span>
+          <div class="opcoes duas" role="radiogroup" aria-label="IA">
+            ${IAS.map((i) => `<button type="button" class="opcao" role="radio" data-ia="${i.id}" aria-checked="${iaAtual() === i.id}"><b>${i.nome}</b><small>${i.app}</small></button>`).join("")}
+          </div>
+        </div>` : ""}
+      ${interruptor("resumoAtivo", r.ativo && ok, "Resumir as reuniões", "Só o texto da transcrição vai para a IA. O áudio continua no seu computador.", !ok)}
+      <div class="revela" id="resumoCampos" ${r.ativo && ok ? "" : "hidden"}>
         <label class="campo"><span>Seu nome</span><input id="rNome" value="${esc(r.nome)}" placeholder="Como você se apresenta"></label>
         <label class="campo"><span>Como te chamam <small>(opcional)</small></span><input id="rApelidos" value="${esc(r.apelidos)}" placeholder="Apelidos, separados por vírgula"></label>
         <label class="campo"><span>Sobre o seu trabalho <small>(opcional)</small></span>
@@ -275,7 +302,7 @@ function rSobre() {
       <div class="info"><span>Código aberto</span><b><button class="link-ext" data-link="${REPO}">github.com/viniiivs/reunioes</button> · licença MIT</b></div>
     </div>
     <h3>Privacidade</h3>
-    <p class="nota">Gravação e transcrição acontecem no seu computador. Só sai daqui o download dos modelos e das atualizações, e o texto da transcrição enviado ao Claude quando o resumo está ligado.</p>
+    <p class="nota">Gravação e transcrição acontecem no seu computador. Só sai daqui o download dos modelos e das atualizações, e o texto da transcrição enviado à IA (Claude ou ChatGPT) quando o resumo ou um addon está ligado.</p>
     <h3>Feito com</h3>
     <p class="nota">${comp.map(([n, u], i) => `<span class="junto"><button class="link-ext" data-link="${u}">${n}</button>${i < comp.length - 1 ? "," : "."}</span>`).join(" ")}</p>`;
 }
@@ -321,7 +348,11 @@ aoMudar((m) => {
   if (m.evento === "instalacao") {
     for (let i = 1; i < m.etapa; i++) estadoInst[i] = { estado: "ok" };
     if (m.estado === "rodando") estadoInst[m.etapa] = { estado: "rodando", detalhe: m.detalhe, pct: m.pct };
-    if (m.estado === "erro") { estadoInst[m.etapa] = { estado: "erro" }; estadoInst.erro = m.erro; instalando = false; }
+    if (m.estado === "erro") {
+      estadoInst[m.etapa] = { estado: "erro" }; estadoInst.erro = m.erro; instalando = false;
+      // a configuração ainda não procura atualização sozinha: o erro pode já estar corrigido numa versão nova
+      if (SETUP && !naWeb && !cancelou) chamar("procurarAtualizacao").then((st) => { desenharAtualizacao(st); desenharRodape(); }).catch(() => {});
+    }
     if (m.estado === "fim") {
       for (let i = 1; i <= m.total; i++) estadoInst[i] = { estado: "ok" };
       instalando = false; instalado = true;
@@ -332,11 +363,17 @@ aoMudar((m) => {
     if (m.estado !== "rodando") desenharLateral();   // fim ou erro: libera (ou mantem travado) o menu
   } else if (m.evento === "atualizacao") {
     desenharAtualizacao(m.status);
+    if (SETUP) desenharRodape();
   }
 });
 
+let cancelou = false;
 async function instalar() {
-  instalando = true; estadoInst = {};
+  instalando = true; estadoInst = {}; cancelou = false;
+  if (!naWeb) {   // "Tentar de novo" só refaz o que faltou: a lista e o número de cada etapa mudam
+    const p = await chamar("pendentes").catch(() => null);
+    if (p?.length) pendentes = p;
+  }
   redesenharInstalacao(); desenharRodape(); desenharLateral();   // trava os passos ja: voltar no meio regravaria a configuracao
   try { await chamar("instalar"); } catch (e) { instalando = false; estadoInst.erro = e.message; redesenharInstalacao(); desenharRodape(); desenharLateral(); }
 }
@@ -400,7 +437,12 @@ function desenharRodape() {
   if (SETUP) {
     const lista = visiveis(), atual = lista[passo].id;
     let direita;
-    if (atual === "instalar") {
+    const nova = ultimoStatus && ["disponivel", "baixando", "pronta"].includes(ultimoStatus.estado) ? ultimoStatus : null;
+    if (atual === "instalar" && estadoInst.erro && !instalando && nova) {
+      const pronta = nova.estado === "pronta";
+      direita = `<button class="btn grande" id="instalarAgora">Tentar de novo</button>
+        <button class="btn primario grande" id="atualizarETentar" ${pronta ? "" : "disabled"}><i class="ph ${pronta ? "ph-arrow-circle-up" : "ph-circle-notch girando"}"></i> ${pronta ? `Atualizar para ${esc(nova.nova)}` : `Baixando ${esc(nova.nova)}${nova.estado === "baixando" ? ` · ${nova.pct}%` : ""}`}</button>`;
+    } else if (atual === "instalar") {
       direita = instalado
         ? `<button class="btn primario grande" data-nav="prox">Continuar</button>`
         : instalando
@@ -447,6 +489,7 @@ async function salvar() {
 
 ligarInterruptores(conteudo, (id, v) => {
   if (id === "separarVozes") { $("#vozes").hidden = !v; }
+  if (id === "gravarSozinho") { $("#appsAuto").hidden = !v; }
   if (id === "resumoAtivo") { $("#resumoCampos").hidden = !v; }
   if (id === "usarGpu" || id === "separarVozes") { cfg[id] = v; atualizarTamanho(); }
   if (naWeb && id === "usarGpu") atualizarOpcoesWeb();
@@ -479,8 +522,10 @@ conteudo.addEventListener("click", async (e) => {
   }
   const op = t.closest(".opcao");
   if (op) {
-    document.querySelectorAll(".opcao").forEach((o) => o.setAttribute("aria-checked", String(o === op)));
-    cfg.modelo = op.dataset.modelo; atualizarTamanho(); marcarSujo();
+    op.closest(".opcoes").querySelectorAll(".opcao").forEach((o) => o.setAttribute("aria-checked", String(o === op)));
+    if (op.dataset.ia) cfg.ia = op.dataset.ia;
+    else { cfg.modelo = op.dataset.modelo; atualizarTamanho(); }
+    marcarSujo();
     return;
   }
   if (t.closest("#testarToken")) {
@@ -491,7 +536,11 @@ conteudo.addEventListener("click", async (e) => {
     st.innerHTML = `<i class="ph ${r.ok ? "ph-check" : "ph-warning"}"></i> ${esc(r.msg)}`;
     return;
   }
-  if (t.closest("#checarClaude")) { sis = await chamar("sistema"); desenharSecao("resumo"); return; }
+  if (t.closest("#checarClaude")) {
+    sis = await chamar("sistema"); desenharSecao("resumo");
+    if (!temIa()) avisar(sis.claudeDesktop ? "Achei o app Claude, mas não o Claude Code." : "Não achei o Claude Code nem o Codex neste computador.");
+    return;
+  }
   if (t.closest("#permitirMic")) {
     try { dev = await chamar("pedirMicrofone"); lAudioWeb(); desenharSecao("audio"); } catch { avisar("O navegador não liberou o microfone. Veja o cadeado na barra de endereço."); }
     return;
@@ -539,7 +588,10 @@ rodape.addEventListener("click", async (e) => {
     lista[passo].ler?.(); passo--; desenhar();
   } else if (t.closest("#instalarAgora")) {
     instalar();
+  } else if (t.closest("#atualizarETentar")) {
+    chamar("aplicarAtualizacao", { retomarInstalacao: true }).catch((er) => avisar(er.message));
   } else if (t.closest("#cancelarInst")) {
+    cancelou = true;
     chamar("cancelarInstalacao");
   } else if (t.closest("#verLog")) {
     chamar("abrirLog").catch((er) => avisar(er.message));
@@ -635,7 +687,7 @@ const podeMaxima = () => sis.webgpu && sis.f16 && cfg.usarGpu;
 function atualizarOpcoesWeb() {
   if (!podeMaxima() && cfg.modelo === "whisper-large-v3-turbo") {
     cfg.modelo = "whisper-small";
-    document.querySelectorAll(".opcao").forEach((o) => o.setAttribute("aria-checked", String(o.dataset.modelo === cfg.modelo)));
+    document.querySelectorAll(".opcao[data-modelo]").forEach((o) => o.setAttribute("aria-checked", String(o.dataset.modelo === cfg.modelo)));
   }
   for (const q of M.QUALIDADES) {
     const off = q.soGpu && !podeMaxima();
@@ -690,7 +742,7 @@ function rTranscricaoWeb() {
 }
 function lTranscricaoWeb() {
   cfg.idioma = $("#idioma").value;
-  cfg.modelo = document.querySelector(".opcao[aria-checked=true]")?.dataset.modelo || cfg.modelo;
+  cfg.modelo = document.querySelector(".opcao[data-modelo][aria-checked=true]")?.dataset.modelo || cfg.modelo;
   cfg.usarGpu = ligado("usarGpu");
 }
 
@@ -827,7 +879,9 @@ if (!SETUP) {
 $("#versao").textContent = "versão " + sis.versao;
 $("#voltar").hidden = SETUP;
 document.title = SETUP ? "Configurar o Reuniões" : "Configurações";
+if (RETOMAR) passo = Math.max(0, visiveis().findIndex((s) => s.id === "instalar"));
 desenhar();
+if (RETOMAR) instalar();
 if (!SETUP && location.hash) irPara(location.hash.replace("#s-", "").replace("#", ""));
 // só agora a lista pode abrir esta tela: os dados já chegaram
 window.abrirSecao = abrirSecao;

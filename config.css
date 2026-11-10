@@ -66,6 +66,7 @@
 
 /* opcoes em cartao (qualidade) */
 .opcoes { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; max-width: 680px; }
+.opcoes.duas { grid-template-columns: repeat(2, 1fr); max-width: calc((680px - 20px) / 3 * 2 + 10px); }   /* mesma largura de cartão da de 3 */
 .opcao {
   position: relative; display: grid; gap: 4px; align-content: start;
   padding: 12px 14px; border: 1px solid var(--line); border-radius: 8px;
@@ -89,6 +90,7 @@
 .status-linha.ok { color: var(--accent); font-weight: 600; }
 .status-linha.ruim { color: var(--danger); }
 .revela[hidden] { display: none; }
+.grade-sw { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 2px 10px; max-width: 680px; }   /* interruptores curtos lado a lado */
 .revela { display: grid; gap: 16px; margin: 6px 0 0 44px; }
 
 /* instalacao */

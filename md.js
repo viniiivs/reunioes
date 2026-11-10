@@ -24,6 +24,34 @@ function inline(t) {
 
 const celulas = (l) => l.trim().replace(/^\||\|$/g, "").split("|").map((c) => c.trim());
 
+// Lista a partir da linha i; item mais recuado vira sublista do anterior. Devolve [html, próxima linha].
+const ITEM = /^\s*([-*+]|\d+[.)])\s+/;
+const recuo = (s) => s.match(/^\s*/)[0].replace(/\t/g, "    ").length;
+function lista(linhas, i) {
+  const base = recuo(linhas[i]);
+  const ordenada = /^\s*\d/.test(linhas[i]);
+  const itens = [];   // { t, sub }
+  while (i < linhas.length) {
+    const l = linhas[i];
+    if (!l.trim()) {   // linha em branco entre itens do mesmo nível não quebra a lista
+      if (ITEM.test(linhas[i + 1] || "") && recuo(linhas[i + 1]) >= base) { i++; continue; }
+      break;
+    }
+    const r = recuo(l);
+    if (ITEM.test(l) && r <= base + 1) { if (r < base || /^\s*\d/.test(l) !== ordenada) break; itens.push({ t: l.replace(ITEM, ""), sub: "" }); i++; }
+    else if (ITEM.test(l) && itens.length) { const [h, prox] = lista(linhas, i); itens.at(-1).sub += h; i = prox; }
+    else if (r > base && itens.length) { itens.at(-1).t += " " + l.trim(); i++; }   // continuação do item
+    else break;
+  }
+  const li = ({ t, sub }) => {
+    const tarefa = t.match(/^\[([ xX])\]\s+(.*)$/);
+    return tarefa
+      ? `<li class="tarefa${tarefa[1] === " " ? "" : " feita"}"><i class="ph ${tarefa[1] === " " ? "ph-square" : "ph-check-square"}" aria-hidden="true"></i><span>${inline(tarefa[2])}${sub}</span></li>`
+      : `<li>${inline(t)}${sub}</li>`;
+  };
+  return [ordenada ? `<ol>${itens.map(li).join("")}</ol>` : `<ul>${itens.map(li).join("")}</ul>`, i];
+}
+
 export function markdown(md) {
   const linhas = String(md || "").replace(/\r/g, "").split("\n");
   let html = "", i = 0;
@@ -51,19 +79,9 @@ export function markdown(md) {
       for (i += 2; i < linhas.length && /^\s*\|.*\|\s*$/.test(linhas[i]); i++) corpo.push(celulas(linhas[i]));
       html += `<div class="tabela-md"><table><thead><tr>${cab.map((c) => `<th>${inline(c)}</th>`).join("")}</tr></thead><tbody>${
         corpo.map((r) => `<tr>${cab.map((_, k) => `<td>${inline(r[k] || "")}</td>`).join("")}</tr>`).join("")}</tbody></table></div>`;
-    } else if (/^\s*([-*+]|\d+[.)])\s+/.test(l)) {
-      const ordenada = /^\s*\d/.test(l);
-      const itens = [];
-      for (; i < linhas.length && /^\s*([-*+]|\d+[.)])\s+/.test(linhas[i]); i++) {
-        let t = linhas[i].replace(/^\s*([-*+]|\d+[.)])\s+/, "");
-        // continuação do item na linha de baixo (recuada)
-        while (i + 1 < linhas.length && /^\s{2,}\S/.test(linhas[i + 1]) && !/^\s*([-*+]|\d+[.)])\s+/.test(linhas[i + 1])) t += " " + linhas[++i].trim();
-        const tarefa = t.match(/^\[([ xX])\]\s+(.*)$/);
-        itens.push(tarefa
-          ? `<li class="tarefa${tarefa[1] === " " ? "" : " feita"}"><i class="ph ${tarefa[1] === " " ? "ph-square" : "ph-check-square"}" aria-hidden="true"></i><span>${inline(tarefa[2])}</span></li>`
-          : `<li>${inline(t)}</li>`);
-      }
-      html += ordenada ? `<ol>${itens.join("")}</ol>` : `<ul>${itens.join("")}</ul>`;
+    } else if (ITEM.test(l)) {
+      const [h, prox] = lista(linhas, i);
+      html += h; i = prox;
     } else {
       const par = [];
       for (; i < linhas.length && linhas[i].trim() && !/^(#{1,4}\s|```|\s*>|\s*([-*+]|\d+[.)])\s+|\s*\|.*\|\s*$)/.test(linhas[i]); i++) par.push(linhas[i].trim());
