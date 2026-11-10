@@ -115,7 +115,7 @@ function desenharResumo() {
     painelResumo.innerHTML = `
       <div class="veredito-topo"><i class="ph ph-circle-notch girando" aria-hidden="true"></i>
         <div><strong>${est === "fila" ? "Na fila do resumo" : "A IA está lendo a transcrição"}</strong>
-        <span>Costuma levar uns 15 segundos. Esta aba atualiza sozinha.</span></div></div>`;
+        <span>Costuma levar uns 15 segundos. Esta aba atualiza automaticamente.</span></div></div>`;
     return;
   }
   if (!resumo && !resumoAtivo) {
@@ -237,7 +237,7 @@ function desenharAddon(a) {
   const erro = a.erro ? `<p class="erro-linha"><i class="ph ph-warning" aria-hidden="true"></i> A última execução falhou: ${f.esc(a.erro)}</p>` : "";
   const rodando = a.rodando ? `
     <div class="veredito-topo"><i class="ph ph-circle-notch girando" aria-hidden="true"></i>
-      <div><strong>${f.esc(a.nome)} está rodando</strong><span>Esta aba atualiza sozinha.</span></div></div>` : "";
+      <div><strong>${f.esc(a.nome)} está rodando</strong><span>Esta aba atualiza automaticamente.</span></div></div>` : "";
   if (!res?.markdown && !trechos.length) {
     el.innerHTML = rodando || `
       <div class="vazio"><h2>${f.esc(a.nome)}</h2>

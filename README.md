@@ -11,7 +11,7 @@ Grava suas reuniões, transcreve no seu próprio computador e diz o que ficou pa
 ## O que faz
 
 - **Grava duas faixas separadas**: o seu microfone e o som do computador (a voz dos outros), sem perda de qualidade.
-- **Grava sozinho quando a reunião começa**: percebe quando um app de chamada (Teams, Meet, Discord, Zoom, Slack, Webex...) usa o microfone, e para quando a chamada acaba. Mutar o microfone não interrompe.
+- **Grava automaticamente quando a reunião começa**: percebe quando um app de chamada (Teams, Meet, Discord, Zoom, Slack, Webex...) usa o microfone, e para quando a chamada acaba. Mutar o microfone não interrompe.
 - **Atalho global** para gravar e parar, mesmo com o app fechado (padrão: Ctrl + Alt + G).
 - **Transcreve no seu computador** com WhisperX. O áudio nunca sai da sua máquina. Com placa de vídeo NVIDIA, uma reunião de 30 minutos fica pronta em poucos minutos; sem ela, funciona pelo processador (mais devagar).
 - **Se ajusta à sua placa de vídeo**: escolhe o modo de transcrição pela memória livre da placa, inclusive em placas de 6 GB com outros programas abertos. Se a memória acabar no meio, continua num modo mais leve (ou no processador) em vez de travar.
@@ -19,7 +19,7 @@ Grava suas reuniões, transcreve no seu próprio computador e diz o que ficou pa
 - **Separa as vozes** de cada pessoa (opcional) e aprende os nomes: dê nome a "Falante 1" uma vez e ele reconhece nas próximas reuniões.
 - **Resumo com IA** (opcional, com o [Claude Code](https://claude.com/product/claude-code), na conta do Claude, ou com o [Codex](https://developers.openai.com/codex/cli), na conta do ChatGPT): lista as tarefas que são suas, com o trecho da reunião que comprova cada uma. Marque as tarefas como feitas e copie o resumo com um clique.
 - **Addons**: cada pessoa pode instalar funções a mais, que aparecem como abas da reunião (ex.: ata, análise com IA, um script seu). Veja [Addons](#addons).
-- **Atualiza sozinho**: baixa versões novas em segundo plano e avisa quando é só reiniciar.
+- **Atualiza automaticamente**: baixa versões novas em segundo plano e avisa quando é só reiniciar.
 
 ![Resumo de uma reunião](docs/resumo.png)
 
@@ -55,22 +55,22 @@ Em **[viniiivs.github.io/reunioes](https://viniiivs.github.io/reunioes/)**, com 
 - Gravações e transcrições ficam no próprio navegador; baixe o que quiser guardar.
 - Funciona offline depois do primeiro uso e pode ser instalada como app (ícone na barra de endereço).
 
-O que só o app de Windows faz: gravar sozinho quando a reunião começa, atalho global e separar as vozes de cada pessoa.
+O que só o app de Windows faz: gravar automaticamente quando a reunião começa, atalho global e separar as vozes de cada pessoa.
 
 ## Novidades
 
-- **1.0.26** (10/11/2026): desligar "Gravar sozinho", ou tirar um app da lista, no meio de uma gravação automática faz ela não parar mais sozinha: continua até você parar.
+- **1.0.26** (10/11/2026): desligar "Gravar automaticamente", ou tirar um app da lista, no meio de uma gravação automática faz ela não parar mais automaticamente: continua até você parar.
 - **1.0.25** (10/11/2026): a gravação automática do Discord não se divide mais em um arquivo por fala: ela espera 3 minutos de silêncio, em vez de 45 segundos, antes de considerar que a chamada acabou.
-- **1.0.24** (10/11/2026): resumo e addons também com o ChatGPT (Codex, conta Plus ou superior), escolha de em quais apps gravar sozinho (ex.: deixar o Discord de fora) e o app acha o Claude Code instalado pelo npm ou winget sem reiniciar.
+- **1.0.24** (10/11/2026): resumo e addons também com o ChatGPT (Codex, conta Plus ou superior), escolha de em quais apps gravar automaticamente (ex.: deixar o Discord de fora) e o app acha o Claude Code instalado pelo npm ou winget sem reiniciar.
 - **1.0.23** (10/11/2026): se a instalação do motor der erro durante a configuração, o app procura uma versão nova e oferece atualizar e continuar de onde parou.
 - **1.0.22** (10/11/2026): a instalação não quebra mais ao baixar os modelos em PCs sem permissão para links simbólicos (erro 1314), e "Tentar de novo" mostra a etapa certa.
 - **1.0.20** (10/11/2026): addons. Funções a mais que cada pessoa instala e que aparecem como abas da reunião, inclusive num trecho selecionado. O Fato ou fake saiu do app e virou um addon à parte; o Resumo continua embutido.
 - **1.0.19** (26/10/2026): a transcrição não trava mais quando a placa de vídeo fica sem memória no meio do caminho; ela percebe e continua num modo mais leve, ou no processador.
 - **1.0.18** (26/10/2026): transcrição muito mais rápida em placas com pouca memória livre; o app escolhe o modo que cabe na placa em vez de usar a memória do PC, que deixava tudo parado.
-- **1.0.17** (24/10/2026): a porcentagem se atualiza sozinha, fechar ou atualizar o app no meio não corta a transcrição, e o app não se atualiza durante uma.
+- **1.0.17** (24/10/2026): a porcentagem se atualiza automaticamente, fechar ou atualizar o app no meio não corta a transcrição, e o app não se atualiza durante uma.
 - **1.0.16** (24/10/2026): o Fato ou fake confere todas as afirmações, no contexto da conversa e sempre com fonte, com filtro por veredito.
 
-O app instalado se atualiza sozinho. Histórico completo em [Releases](https://github.com/viniiivs/reunioes/releases).
+O app instalado se atualiza automaticamente. Histórico completo em [Releases](https://github.com/viniiivs/reunioes/releases).
 
 ## Addons
 

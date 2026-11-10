@@ -46,6 +46,7 @@ Resumo vivo do projeto: decisões, o que está pronto, o que falta e onde fica c
 
 ## Pendente / conhecido
 - Web publicada na 1.0.26 (10/11/2026), testada com gravação falsa no IndexedDB (scratchpad web_teste.py; PC e celular, claro e escuro).
+- NÃO publicado (10/11/2026): textos da interface trocam "sozinho" por "automaticamente" (Gravar/Atualizar automaticamente etc.); nomes de config (gravarSozinho...) ficam iguais. Topo medido: botão 197→219 px, cabe em 704 e 1260.
 - 1.0.26 publicada (10/11/2026): "Gravar sozinho" vale para começar E parar. Desligado (ou app fora da lista) no meio de uma gravação automática: Servico.largar() solta a gravação, que vira manual. Com ele desligado nada para sozinho (passo() sai antes). Testado com laço simulado.
 - 1.0.25 publicada (10/11/2026): Discord solta o mic quando a pessoa para de falar (push-to-talk) e só toca som quando alguém fala; com FIM=45 s virava um arquivo por fala (relato de um amigo, com gravar sozinho ligado). FIM_POR_APP = {discord: 180} em servico.py (fim_de()). Testado simulando o laço com relógio falso.
 - 1.0.24 publicada (10/11/2026):

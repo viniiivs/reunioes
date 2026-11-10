@@ -58,7 +58,7 @@ function rBoasVindas() {
     <ul class="recursos">
       <li><i class="ph ph-waveform"></i><div><b>Sua voz e a dos outros em faixas separadas</b><span>Grava o microfone e o som do computador ao mesmo tempo, sem perder qualidade.</span></div></li>
       <li><i class="ph ph-lock-simple"></i><div><b>Transcrição no seu computador</b><span>O áudio nunca sai da sua máquina. A IA de transcrição roda aqui mesmo.</span></div></li>
-      <li><i class="ph ph-lightning"></i><div><b>Grava sozinho quando a reunião começa</b><span>Percebe quando um app de chamada (Teams, Meet, Discord, Zoom...) usa o microfone.</span></div></li>
+      <li><i class="ph ph-lightning"></i><div><b>Grava automaticamente quando a reunião começa</b><span>Percebe quando um app de chamada (Teams, Meet, Discord, Zoom...) usa o microfone.</span></div></li>
       <li><i class="ph ph-sparkle"></i><div><b>Resumo com o que é seu</b><span>Opcional: a IA (Claude ou ChatGPT) lê a transcrição e lista as suas tarefas, com o trecho que comprova cada uma.</span></div></li>
     </ul>
     <p class="credito">Feito por Vinícius Vieira <span aria-hidden="true">·</span> <a data-link="${GITHUB}">github.com/viniiivs</a></p>`;
@@ -158,9 +158,9 @@ function rExtras() {
   const sem = cfg.gravarSozinhoSem || [];
   return `
     <h2>Gravação</h2>
-    <p class="lead">Você pode gravar pelo botão no app, pelo atalho de teclado ou deixar que ele perceba a reunião sozinho.</p>
+    <p class="lead">Você pode gravar pelo botão no app, pelo atalho de teclado ou deixar que ele perceba a reunião e grave automaticamente.</p>
     <div class="pilha">
-      ${interruptor("gravarSozinho", cfg.gravarSozinho, "Gravar sozinho quando uma reunião começar", "Começa quando um app de chamada (Teams, Meet, Discord, Zoom...) usa o microfone e para quando ele solta. Toca um bipe ao começar e ao parar.")}
+      ${interruptor("gravarSozinho", cfg.gravarSozinho, "Gravar automaticamente quando uma reunião começar", "Começa quando um app de chamada (Teams, Meet, Discord, Zoom...) usa o microfone e para quando ele solta. Toca um bipe ao começar e ao parar.")}
       <div class="revela" id="appsAuto" ${cfg.gravarSozinho ? "" : "hidden"}>
         <div class="grade-sw" role="group" aria-label="Apps da gravação automática">${APPS_AUTO.map(([id, nome]) => interruptor(`auto-${id}`, !sem.includes(id), nome)).join("")}</div>
       </div>
@@ -170,7 +170,7 @@ function rExtras() {
         ${atalhoOcupado && cfg.atalho ? `<div class="status-linha ruim"><i class="ph ph-warning"></i> Este atalho já é usado por outro programa. Escolha outro.</div>` : ""}
       </label>
       ${interruptor("iniciarComWindows", cfg.iniciarComWindows, "Iniciar com o Windows", "Necessário para o atalho e a gravação automática funcionarem sem abrir o app.")}
-      ${SETUP ? interruptor("atualizarSozinho", cfg.atualizarSozinho, "Atualizar sozinho", "Baixa versões novas em segundo plano e avisa quando é só reiniciar.") : ""}
+      ${SETUP ? interruptor("atualizarSozinho", cfg.atualizarSozinho, "Atualizar automaticamente", "Baixa versões novas em segundo plano e avisa quando é só reiniciar.") : ""}
     </div>`;
 }
 function lExtras() {
@@ -259,7 +259,7 @@ function rPronto() {
   return `
     <i class="ph ph-check-circle grande-ok" aria-hidden="true"></i>
     <h1>Tudo pronto</h1>
-    <p class="lead">${cfg.gravarSozinho ? "Na próxima reunião ele começa a gravar sozinho (você ouve um bipe). " : ""}${cfg.atalho ? `Para gravar na hora, use ${at} ou o botão Gravar no app.` : "Para gravar, use o botão Gravar no app."} Depois é só clicar em Transcrever.</p>`;
+    <p class="lead">${cfg.gravarSozinho ? "Na próxima reunião ele começa a gravar automaticamente (você ouve um bipe). " : ""}${cfg.atalho ? `Para gravar na hora, use ${at} ou o botão Gravar no app.` : "Para gravar, use o botão Gravar no app."} Depois é só clicar em Transcrever.</p>`;
 }
 
 function rMotor() {
@@ -285,7 +285,7 @@ function rAtualizacoes() {
     <p class="lead">Versão instalada: <b>${esc(sis.versao)}</b></p>
     <div class="pilha">
       <div id="atualizacao">${atualizacaoHtml(ultimoStatus)}</div>
-      ${interruptor("atualizarSozinho", cfg.atualizarSozinho, "Atualizar sozinho", "Procura ao abrir o app, baixa em segundo plano e avisa quando é só reiniciar.")}
+      ${interruptor("atualizarSozinho", cfg.atualizarSozinho, "Atualizar automaticamente", "Procura ao abrir o app, baixa em segundo plano e avisa quando é só reiniciar.")}
     </div>`;
 }
 function lAtualizacoes() { cfg.atualizarSozinho = ligado("atualizarSozinho"); }
@@ -635,7 +635,7 @@ $("#voltar").addEventListener("click", () => {
   else location.href = "index.html";
 });
 
-// A lista chama ao abrir de novo: relê o que pode ter mudado fora daqui (ex.: "Gravar sozinho" no topo).
+// A lista chama ao abrir de novo: relê o que pode ter mudado fora daqui (ex.: "Gravar automaticamente" no topo).
 async function abrirSecao(id) {
   if (!sujo) {
     [cfg, pendentes] = await Promise.all([chamar("config"), chamar("pendentes")]);
@@ -814,7 +814,7 @@ function rProntoWeb() {
   return `
     <i class="ph ph-check-circle grande-ok" aria-hidden="true"></i>
     <h1>Tudo pronto</h1>
-    <p class="lead">Para gravar, clique em Gravar e escolha a aba da reunião. Também dá para arrastar um arquivo de áudio para a lista. A transcrição começa sozinha quando a gravação termina.</p>`;
+    <p class="lead">Para gravar, clique em Gravar e escolha a aba da reunião. Também dá para arrastar um arquivo de áudio para a lista. A transcrição começa automaticamente quando a gravação termina.</p>`;
 }
 
 function rMotorWeb() {
@@ -857,7 +857,7 @@ function rSobreWeb() {
       <div class="info"><span>Versão</span><b>${esc(sis.versao)}</b></div>
       <div class="info"><span>Feito por</span><b>Vinícius Vieira · <button class="link-ext" data-link="${GITHUB}">github.com/viniiivs</button></b></div>
       <div class="info"><span>Código aberto</span><b><button class="link-ext" data-link="${REPO}">github.com/viniiivs/reunioes</button> · licença MIT</b></div>
-      <div class="info"><span>App para Windows</span><b><button class="link-ext" data-link="${REPO}/releases/latest">Baixar</button> · grava sozinho e separa as vozes</b></div>
+      <div class="info"><span>App para Windows</span><b><button class="link-ext" data-link="${REPO}/releases/latest">Baixar</button> · grava automaticamente e separa as vozes</b></div>
     </div>
     <h3>Privacidade</h3>
     <p class="nota">Gravação e transcrição acontecem no seu navegador. Nada vai para servidor: só o download do modelo e, se você ligar o resumo, o texto da transcrição enviado à API da Anthropic com a sua chave.</p>
