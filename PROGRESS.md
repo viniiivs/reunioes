@@ -45,6 +45,7 @@ Resumo vivo do projeto: decisões, o que está pronto, o que falta e onde fica c
 - 1.0.20 addons (abas extras por pasta local, tipos claude/comando, trecho, selos); Fato ou fake vira addon externo, 10/11/2026
 
 ## Pendente / conhecido
+- Web publicada na 1.0.26 (10/11/2026), testada com gravação falsa no IndexedDB (scratchpad web_teste.py; PC e celular, claro e escuro).
 - 1.0.26 publicada (10/11/2026): "Gravar sozinho" vale para começar E parar. Desligado (ou app fora da lista) no meio de uma gravação automática: Servico.largar() solta a gravação, que vira manual. Com ele desligado nada para sozinho (passo() sai antes). Testado com laço simulado.
 - 1.0.25 publicada (10/11/2026): Discord solta o mic quando a pessoa para de falar (push-to-talk) e só toca som quando alguém fala; com FIM=45 s virava um arquivo por fala (relato de um amigo, com gravar sozinho ligado). FIM_POR_APP = {discord: 180} em servico.py (fim_de()). Testado simulando o laço com relógio falso.
 - 1.0.24 publicada (10/11/2026):
