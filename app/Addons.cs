@@ -11,10 +11,11 @@ namespace Reunioes;
 /// addon.json invalido (aparece nas Configuracoes com o motivo e nao vira aba).</summary>
 public sealed record Addon(
     string Id, string Pasta, string Nome, string Icone, string? Descricao, string Botao, string? Versao,
-    string Tipo,              // claude | comando
+    string Tipo,              // claude (= "ia": roda no Claude Code ou no Codex) | comando
     string? Prompt,           // claude: arquivo do prompt de sistema (relativo a pasta)
     string[] Ferramentas,     // claude: ex. WebSearch, WebFetch; vazio = nenhuma
-    string Modelo,            // claude: sonnet, opus, haiku...
+    string Modelo,            // claude: sonnet, opus, haiku... (no Codex vira o esforco de raciocinio)
+    string? IaExigida,        // claude: "claude" ou "codex" quando o addon so funciona numa; null = a escolhida
     string[]? Comando,        // comando: programa e argumentos; "{python}" = Python do motor
     int PrazoMinutos,
     string? BotaoTrecho,      // != null: tambem roda num trecho selecionado na transcricao (rotulo do botao)
@@ -45,7 +46,7 @@ public static class Addons
     static Addon Ler(string pasta)
     {
         var id = Path.GetFileName(pasta);
-        Addon Ruim(string msg) => new(id, pasta, id, "puzzle-piece", null, "Rodar", null, "claude", null, [], "sonnet", null, 10, null, msg);
+        Addon Ruim(string msg) => new(id, pasta, id, "puzzle-piece", null, "Rodar", null, "claude", null, [], "sonnet", null, null, 10, null, msg);
         if (!reId.IsMatch(id)) return Ruim("Nome da pasta inválido: use letras minúsculas, números e hífen.");
         var arq = Path.Combine(pasta, "addon.json");
         if (!File.Exists(arq)) return Ruim("Falta o addon.json.");
@@ -58,16 +59,19 @@ public static class Addons
         var icone = Txt("icone", 40) ?? "puzzle-piece";
         if (!reIcone.IsMatch(icone)) icone = "puzzle-piece";
         var tipo = Txt("tipo", 10) ?? "claude";
+        if (tipo == "ia") tipo = "claude";
+        var exigida = Txt("ia", 10);
         var prazo = j["prazoMinutos"] is JsonValue pv && pv.TryGetValue<int>(out var p) ? Math.Clamp(p, 1, 60) : 10;
         var ferramentas = j["ferramentas"] is JsonArray fa ? fa.Select(x => x?.ToString() ?? "").Where(x => reFerramenta.IsMatch(x)).ToArray() : [];
         var comando = j["comando"] is JsonArray ca ? ca.Select(x => x?.ToString() ?? "").ToArray() : null;
         var a = new Addon(id, pasta, nome, icone, Txt("descricao", 300), Txt("botao", 30) ?? "Rodar", Txt("versao", 20), tipo,
-            Txt("prompt", 100) ?? "prompt.md", ferramentas, Txt("modelo", 30) ?? "sonnet", comando, prazo, Txt("botaoTrecho", 30), null);
+            Txt("prompt", 100) ?? "prompt.md", ferramentas, Txt("modelo", 30) ?? "sonnet", exigida, comando, prazo, Txt("botaoTrecho", 30), null);
 
         if (tipo == "claude")
         {
             var pr = Dentro(pasta, a.Prompt!);
             if (pr == null || !File.Exists(pr)) return a with { Erro = $"Falta o arquivo do prompt ({a.Prompt})." };
+            if (exigida is not (null or Ia.Claude or Ia.Codex)) return a with { Erro = "\"ia\" precisa ser \"claude\" ou \"codex\"." };
         }
         else if (tipo == "comando")
         {
@@ -108,7 +112,6 @@ public static class Addons
         string md; string? modelo = null;
         if (a.Tipo == "claude")
         {
-            if (Sistema.Claude() == null) throw new InvalidOperationException("O Claude Code não está instalado neste computador.");
             var prompt = File.ReadAllText(Dentro(a.Pasta, a.Prompt!)!).Replace("{nome}", nome ?? "o dono do app");
             var arq = Path.Combine(Config.DirApp, $"addon-{a.Id}-prompt.md");
             File.WriteAllText(arq, prompt);
@@ -116,9 +119,9 @@ public static class Addons
                 + (trecho is null ? "\nTranscrição:\n\n"
                     : $"\nRode só neste trecho{(trecho.Quem is null ? "" : $", dito por {trecho.Quem}")}{(trecho.Tempo is null ? "" : $" em {trecho.Tempo}")}:\n«{trecho.Texto}»\n\nTranscrição, só para contexto:\n\n")
                 + transcricao;
-            var res = await Gravacoes.RodarClaude(arq, null, entrada, string.Join(",", a.Ferramentas), TimeSpan.FromMinutes(a.PrazoMinutos), a.Modelo);
-            md = res["result"]?.ToString() ?? "";
-            modelo = res["modelUsage"] is JsonObject mu && mu.Count > 0 ? mu.First().Key : a.Modelo;
+            var res = await Ia.Rodar(c, a.IaExigida, arq, null, entrada, string.Join(",", a.Ferramentas), TimeSpan.FromMinutes(a.PrazoMinutos), a.Modelo);
+            md = res.Texto;
+            modelo = res.Modelo;
         }
         else
         {
@@ -242,7 +245,8 @@ public sealed partial class Gravacoes
             return (object)new
             {
                 id = a.Id, nome = a.Nome, icone = a.Icone, descricao = a.Descricao, botao = a.Botao, botaoTrecho = a.BotaoTrecho,
-                pode = a.Tipo != "claude" || Sistema.Claude() != null,
+                pode = a.Tipo != "claude" || Ia.Escolhida(cfg(), a.IaExigida) != null,
+                precisa = a.Tipo == "claude" ? a.IaExigida : null,
                 resultado = res, rodando = AddonRodando(b, a.Id), erro = File.Exists(e) ? LerCompartilhado(e) : null,
             };
         }).ToArray();

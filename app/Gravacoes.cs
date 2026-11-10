@@ -28,7 +28,7 @@ public record Gravacao(
 public record Resumo(string Estado, string? Veredito, bool? PrecisaAgir, int? Acoes, string? Erro, int? Feitas = null);
 
 /// <summary>Le a pasta das gravacoes e roda o motor: gravar, transcrever (fila, uma por vez: a GPU
-/// e uma so), nomear vozes e resumir com o Claude Code.</summary>
+/// e uma so), nomear vozes e resumir com IA (Claude Code ou Codex).</summary>
 public sealed partial class Gravacoes
 {
     readonly Func<Config> cfg;
@@ -569,7 +569,7 @@ public sealed partial class Gravacoes
         }
     }
 
-    // ------------------------------------------------------------------ resumo com IA (Claude Code)
+    // ------------------------------------------------------------------ resumo com IA (Claude Code ou Codex)
 
     readonly List<string> filaResumo = new();
     readonly HashSet<string> vistasTranscrevendo = new();
@@ -609,7 +609,7 @@ public sealed partial class Gravacoes
     {
         Validar(b);
         if (!cfg().Resumo.Ativo) throw new InvalidOperationException("Ligue o resumo com IA em Configurações.");
-        if (Sistema.Claude() == null) throw new InvalidOperationException("O Claude Code não está instalado neste computador.");
+        if (Ia.Escolhida(cfg()) == null) throw new InvalidOperationException(Ia.Falta(null));
         if (!File.Exists(Caminho(b, "transcricao.md"))) throw new InvalidOperationException("Transcreva antes de resumir.");
         lock (trava)
         {
@@ -639,10 +639,11 @@ public sealed partial class Gravacoes
                 File.Delete(Caminho(b, "resumo.erro"));
                 var prompt = Path.Combine(Config.DirApp, "resumo-prompt.md");
                 File.WriteAllText(prompt, PromptResumo.Montar(cfg().Resumo));
-                var res = await RodarClaude(prompt, "resumo-schema.json", LerCompartilhado(Caminho(b, "transcricao.md")), "", TimeSpan.FromMinutes(5));
-                var so = (JsonObject)res["structured_output"]!;
+                var res = await Ia.Rodar(cfg(), null, prompt, "resumo-schema.json", LerCompartilhado(Caminho(b, "transcricao.md")), "", TimeSpan.FromMinutes(5));
+                var so = res.Estruturado!;
                 so["gerado_em"] = DateTime.Now.ToString("s");
-                so["modelo"] = res["modelUsage"] is JsonObject mu && mu.Count > 0 ? mu.First().Key : "sonnet";
+                so["modelo"] = res.Modelo;
+                so["ia"] = res.Ia;
                 File.WriteAllText(Caminho(b, "resumo.json"), so.ToJsonString(Config.Json));
             }
             catch (Exception ex)

@@ -137,12 +137,12 @@ function estado(g) {
   }
 }
 
-// Coluna "Para você": o veredito do resumo do Claude.
+// Coluna "Para você": o veredito do resumo da IA.
 function paraVoce(g) {
   if (g.estado !== "pronta") return "";
   const r = g.resumo;
   if (!r && est && !est.resumoAtivo) return "";
-  if (!r) return `<button class="link" data-acao="resumir" title="Pedir ao Claude um resumo com o que você precisa fazer"><i class="ph ph-sparkle" aria-hidden="true"></i>Resumir</button>`;
+  if (!r) return `<button class="link" data-acao="resumir" title="Resumo com IA"><i class="ph ph-sparkle" aria-hidden="true"></i>Resumir</button>`;
   switch (r.estado) {
     case "gerando": return `<span class="veredito espera"><i class="ph ph-circle-notch girando" aria-hidden="true"></i>Resumindo…</span>`;
     case "fila": return `<span class="veredito espera"><i class="ph ph-hourglass" aria-hidden="true"></i>Na fila do resumo</span>`;

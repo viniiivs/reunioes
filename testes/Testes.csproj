@@ -7,7 +7,8 @@
     <ImplicitUsings>enable</ImplicitUsings>
   </PropertyGroup>
   <ItemGroup>
-    <Compile Include="..\app\Gravacoes.cs;..\app\Config.cs;..\app\Sistema.cs;..\app\PromptResumo.cs;..\app\Claude.cs;..\app\Atualizador.cs;..\app\Addons.cs" />
+    <Compile Include="..\app\Gravacoes.cs;..\app\Config.cs;..\app\Sistema.cs;..\app\PromptResumo.cs;..\app\Ia.cs;..\app\Atualizador.cs;..\app\Addons.cs" />
+    <None Include="..\app\motor\resumo-schema.json" Link="motor\resumo-schema.json" CopyToOutputDirectory="PreserveNewest" />
     <PackageReference Include="System.Management" Version="8.0.0" />
     <PackageReference Include="System.Security.Cryptography.ProtectedData" Version="8.0.0" />
     <PackageReference Include="Velopack" Version="1.2.161" />

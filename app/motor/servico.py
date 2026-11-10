@@ -120,26 +120,34 @@ def titulos_por_exe():
     return r
 
 
-def titulo_de_reuniao(exe, titulos=None):
+def plataforma(nome):
+    """"Teams", "Microsoft Teams", "Meet", "Discord"... -> id usado em gravarSozinhoSem."""
+    n = nome.lower()
+    return "teams" if "teams" in n else n.split()[0]
+
+
+def titulo_de_reuniao(exe, titulos=None, ignorar=frozenset()):
     tit = titulos if titulos is not None else titulos_por_exe()
     for t in tit.get(exe, []):
-        m = TITULO_REUNIAO.search(t)
-        if m:
-            return "Meet" if m.group(0).lower() == "meet" else m.group(0)
+        for m in TITULO_REUNIAO.finditer(t):
+            nome = "Meet" if m.group(0).lower() == "meet" else m.group(0)
+            if plataforma(nome) not in ignorar:
+                return nome
     return None
 
 
-def em_reuniao():
-    """(nome para mostrar, exe) do app de reuniao que esta no microfone agora, ou (None, None)."""
+def em_reuniao(ignorar=frozenset()):
+    """(nome para mostrar, exe) do app de reuniao que esta no microfone agora, ou (None, None).
+    ignorar: plataformas que a pessoa tirou da gravacao automatica (ex.: {"discord"})."""
     exes = capturando()
     for exe in exes:
-        if exe in APPS:
+        if exe in APPS and plataforma(APPS[exe]) not in ignorar:
             return APPS[exe], exe
     navs = exes & NAVEGADORES.keys()
     if navs:
         tit = titulos_por_exe()
         for exe in navs:
-            nome = titulo_de_reuniao(exe, tit)
+            nome = titulo_de_reuniao(exe, tit, ignorar)
             if nome:
                 return f"{nome} ({NAVEGADORES[exe]})", exe
     return None, None
@@ -308,7 +316,7 @@ class Servico:
                 if ainda_na_chamada(self.suprimido):
                     return None
                 self.suprimido = None
-            app, exe = em_reuniao()
+            app, exe = em_reuniao(frozenset(comum.config().get("gravarSozinhoSem") or []))
             if not app:
                 self.visto_desde = None
                 return None

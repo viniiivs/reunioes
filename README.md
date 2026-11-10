@@ -17,8 +17,8 @@ Grava suas reuniões, transcreve no seu próprio computador e diz o que ficou pa
 - **Se ajusta à sua placa de vídeo**: escolhe o modo de transcrição pela memória livre da placa, inclusive em placas de 6 GB com outros programas abertos. Se a memória acabar no meio, continua num modo mais leve (ou no processador) em vez de travar.
 - **Mostra o andamento** da transcrição em porcentagem na lista. Dá para pausar e retomar sem perder o que já foi feito, passar uma reunião para o começo da fila e fechar o app no meio: a transcrição continua.
 - **Separa as vozes** de cada pessoa (opcional) e aprende os nomes: dê nome a "Falante 1" uma vez e ele reconhece nas próximas reuniões.
-- **Resumo com IA** (opcional, com o [Claude Code](https://claude.com/product/claude-code)): lista as tarefas que são suas, com o trecho da reunião que comprova cada uma. Marque as tarefas como feitas e copie o resumo com um clique.
-- **Addons**: cada pessoa pode instalar funções a mais, que aparecem como abas da reunião (ex.: ata, análise com o Claude, um script seu). Veja [Addons](#addons).
+- **Resumo com IA** (opcional, com o [Claude Code](https://claude.com/product/claude-code), na conta do Claude, ou com o [Codex](https://developers.openai.com/codex/cli), na conta do ChatGPT): lista as tarefas que são suas, com o trecho da reunião que comprova cada uma. Marque as tarefas como feitas e copie o resumo com um clique.
+- **Addons**: cada pessoa pode instalar funções a mais, que aparecem como abas da reunião (ex.: ata, análise com IA, um script seu). Veja [Addons](#addons).
 - **Atualiza sozinho**: baixa versões novas em segundo plano e avisa quando é só reiniciar.
 
 ![Resumo de uma reunião](docs/resumo.png)
@@ -42,7 +42,7 @@ Grava suas reuniões, transcreve no seu próprio computador e diz o que ficou pa
 | Internet | só para instalar e para as atualizações; gravar e transcrever funcionam offline |
 | Placa de vídeo NVIDIA | opcional, deixa a transcrição muito mais rápida |
 | Separar vozes | opcional; precisa de uma conta grátis no [Hugging Face](https://huggingface.co) e aceitar os termos do modelo [pyannote community-1](https://huggingface.co/pyannote/speaker-diarization-community-1). O assistente explica |
-| Resumo com IA e addons do Claude | opcionais; precisam do [Claude Code](https://claude.com/product/claude-code) instalado e com login |
+| Resumo com IA e addons de IA | opcionais; precisam do [Claude Code](https://claude.com/product/claude-code) (conta do Claude) ou do [Codex](https://developers.openai.com/codex/cli) (conta do ChatGPT, ex.: Plus) instalado e com login. Com os dois, escolha em Configurações › Resumo com IA |
 
 ## Versão web
 
@@ -59,6 +59,7 @@ O que só o app de Windows faz: gravar sozinho quando a reunião começa, atalho
 
 ## Novidades
 
+- **1.0.24** (10/11/2026): resumo e addons também com o ChatGPT (Codex, conta Plus ou superior), escolha de em quais apps gravar sozinho (ex.: deixar o Discord de fora) e o app acha o Claude Code instalado pelo npm ou winget sem reiniciar.
 - **1.0.23** (10/11/2026): se a instalação do motor der erro durante a configuração, o app procura uma versão nova e oferece atualizar e continuar de onde parou.
 - **1.0.22** (10/11/2026): a instalação não quebra mais ao baixar os modelos em PCs sem permissão para links simbólicos (erro 1314), e "Tentar de novo" mostra a etapa certa.
 - **1.0.20** (10/11/2026): addons. Funções a mais que cada pessoa instala e que aparecem como abas da reunião, inclusive num trecho selecionado. O Fato ou fake saiu do app e virou um addon à parte; o Resumo continua embutido.
@@ -75,15 +76,16 @@ Addons fazem algo a mais com uma reunião já transcrita, cada um numa aba próp
 
 Um addon é uma pasta (nome em minúsculas, números e hífen) com um `addon.json`. Ele pode ser de dois tipos.
 
-**`claude`**: manda a transcrição ao Claude Code com o prompt do addon. O Claude responde em markdown.
+**`claude`** (ou `ia`): manda a transcrição à IA com o prompt do addon: o Claude Code ou o Codex, a que estiver escolhida. A resposta vem em markdown.
 
 ```jsonc
 {
   "nome": "Ata", "icone": "file-text", "descricao": "Ata formal da reunião.", "botao": "Gerar ata", "versao": "1.0",
   "tipo": "claude",
   "prompt": "prompt.md",          // prompt de sistema; {nome} vira o seu nome (Configurações › Resumo com IA)
-  "modelo": "sonnet",             // sonnet, opus, haiku...
-  "ferramentas": ["WebSearch"],   // opcional: ferramentas que o Claude pode usar
+  "modelo": "sonnet",             // sonnet, opus, haiku...; no Codex vira o esforço de raciocínio (médio, alto, baixo)
+  "ferramentas": ["WebSearch"],   // opcional: WebSearch/WebFetch ligam a busca na web (nos dois)
+  "ia": "claude",                 // opcional: só roda nesta IA ("claude" ou "codex")
   "prazoMinutos": 5
 }
 ```
@@ -120,7 +122,7 @@ Há dois exemplos em [`exemplos/addons`](exemplos/addons): `ata`, do tipo claude
 
 Gravação e transcrição acontecem no seu computador. Só sai daqui:
 - o download dos modelos e das atualizações;
-- o texto da transcrição, enviado ao Claude, se você ligar o resumo com IA ou rodar um addon do tipo claude (o addon pode deixar o Claude pesquisar na web);
+- o texto da transcrição, enviado à IA (Claude ou ChatGPT, pela sua conta), se você ligar o resumo com IA ou rodar um addon de IA (o addon pode deixar a IA pesquisar na web);
 - o que um addon do tipo comando fizer: ele é um programa que você instalou.
 
 Grave reuniões só com o conhecimento das pessoas e respeitando as leis do seu país.

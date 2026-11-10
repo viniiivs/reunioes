@@ -98,7 +98,9 @@ async function carregar(primeira) {
   }
 }
 
-// Atualiza o resumo quando o Claude termina (o host avisa qualquer mudança na pasta).
+const nomeIa = (r) => (r?.ia === "codex" ? "ChatGPT" : "Claude");
+
+// Atualiza o resumo quando a IA termina (o host avisa qualquer mudança na pasta).
 aoMudar((m) => {
   if (m.evento === "aba") return abrirAba(m.aba);
   if (m.evento === "mudou" && (!resumo || estadoResumo?.estado === "gerando" || estadoResumo?.estado === "fila" || addons.some((a) => a.rodando))) carregar(false);
@@ -112,18 +114,18 @@ function desenharResumo() {
   if (est === "gerando" || est === "fila") {
     painelResumo.innerHTML = `
       <div class="veredito-topo"><i class="ph ph-circle-notch girando" aria-hidden="true"></i>
-        <div><strong>${est === "fila" ? "Na fila do resumo" : "O Claude está lendo a transcrição"}</strong>
+        <div><strong>${est === "fila" ? "Na fila do resumo" : "A IA está lendo a transcrição"}</strong>
         <span>Costuma levar uns 15 segundos. Esta aba atualiza sozinha.</span></div></div>`;
     return;
   }
   if (!resumo && !resumoAtivo) {
     painelResumo.innerHTML = `
       <div class="vazio"><h2>Resumo com IA desligado</h2>
-        <p>Ligue em Configurações, na seção Resumo com IA${naWeb ? " (precisa de uma chave da API da Anthropic)" : ""}. O Claude lê a transcrição e diz se ficou alguma tarefa para você.</p></div>`;
+        <p>Ligue em Configurações, na seção Resumo com IA${naWeb ? " (precisa de uma chave da API da Anthropic)" : ""}. A IA lê a transcrição e diz se ficou alguma tarefa para você.</p></div>`;
     return;
   }
   if (!resumo) {
-    const erro = est === "erro" ? `<p>O último pedido falhou: ${f.esc(estadoResumo.erro || "")}</p>` : `<p>O Claude lê a transcrição e diz se você precisa fazer alguma coisa.</p>`;
+    const erro = est === "erro" ? `<p>O último pedido falhou: ${f.esc(estadoResumo.erro || "")}</p>` : `<p>A IA lê a transcrição e diz se você precisa fazer alguma coisa.</p>`;
     painelResumo.innerHTML = `
       <div class="vazio"><h2>${est === "erro" ? "O resumo falhou" : "Sem resumo ainda"}</h2>${erro}
         <button class="btn primario" data-acao="resumir"><i class="ph ph-sparkle" aria-hidden="true"></i> ${est === "erro" ? "Tentar de novo" : "Resumir"}</button></div>`;
@@ -144,15 +146,15 @@ function desenharResumo() {
     <div class="veredito-topo${r.precisa_agir && !tudoFeito ? " agir" : ""}">
       <i class="ph ${r.precisa_agir && !tudoFeito ? "ph-flag" : "ph-check-circle"}" aria-hidden="true"></i>
       <div><strong>${f.esc(r.veredito)}</strong>
-      <span>${!r.precisa_agir ? "Segundo o Claude, nada depende de você."
+      <span>${!r.precisa_agir ? `Segundo o ${nomeIa(r)}, nada depende de você.`
         : lista.length && feitas === lista.length ? "Você marcou tudo como feito."
-        : feitas ? `Segundo o Claude, você precisa agir. ${feitas} de ${lista.length} feitas.` : "Segundo o Claude, você precisa agir."}</span></div>
+        : feitas ? `Segundo o ${nomeIa(r)}, você precisa agir. ${feitas} de ${lista.length} feitas.` : `Segundo o ${nomeIa(r)}, você precisa agir.`}</span></div>
     </div>
     ${acoes ? `<h2>O que você precisa fazer</h2><ol class="acoes-lista">${acoes}</ol>` : ""}
     ${r.atencao?.length ? `<h2>Fique sabendo</h2><ul>${r.atencao.map((x) => `<li>${f.esc(x)}</li>`).join("")}</ul>` : ""}
     ${r.resumo?.length ? `<h2>Do que se falou</h2><ul>${r.resumo.map((x) => `<li>${f.esc(x)}</li>`).join("")}</ul>` : ""}
     <div class="rodape-resumo">
-      <span>Gerado pelo Claude${r.modelo ? ` (${f.esc(r.modelo)})` : ""}${quando ? ` em ${f.diaCurto(quando)} às ${f.hora(quando)}` : ""}. Pode errar: confira no texto.</span>
+      <span>Gerado pelo ${nomeIa(r)}${r.modelo ? ` (${f.esc(r.modelo)})` : ""}${quando ? ` em ${f.diaCurto(quando)} às ${f.hora(quando)}` : ""}. Pode errar: confira no texto.</span>
       <button class="btn" data-acao="resumir"><i class="ph ph-arrows-clockwise" aria-hidden="true"></i> Gerar de novo</button>
     </div>`;
 }
@@ -240,7 +242,7 @@ function desenharAddon(a) {
     el.innerHTML = rodando || `
       <div class="vazio"><h2>${f.esc(a.nome)}</h2>
         ${a.descricao ? `<p>${f.esc(a.descricao)}</p>` : ""}
-        ${a.pode ? "" : `<p>Precisa do Claude Code instalado neste computador.</p>`}
+        ${a.pode ? "" : `<p>${a.precisa === "codex" ? "Precisa do Codex" : a.precisa === "claude" ? "Precisa do Claude Code" : "Precisa do Claude Code ou do Codex"} instalado neste computador.</p>`}
         ${erro}
         <button class="btn primario" data-rodar${a.pode ? "" : " disabled"}><i class="ph ph-${f.esc(a.icone)}" aria-hidden="true"></i> ${f.esc(a.botao)}</button></div>`;
     return;

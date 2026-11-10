@@ -189,7 +189,7 @@ async function simular(cmd, args) {
     case "instalarAddon": return null;
     case "estado": return { gravando: q.has("gravando"), servico: { rodando: true, app: q.has("nomic") ? "Zoom" : null, atalhoOk: true }, gravarSozinho: !q.has("auto0"), atalho: "ctrl+alt+g", motorPronto: true, atualizacao: { estado: q.has("upd") ? "pronta" : "atual", nova: "1.1.0", versao: "1.0.0" } };
     case "config": return { ...configExemplo };
-    case "sistema": return { versao: "1.0.0", gpus: q.has("semgpu") ? ["Intel UHD Graphics"] : ["NVIDIA GeForce RTX 4060"], nvidia: !q.has("semgpu"), memoriaGB: 16, livreGB: 120.4, livreGravacoesGB: 120.4, claude: !q.has("semclaude"), claudeDesktop: q.has("sodesktop") };
+    case "sistema": return { versao: "1.0.0", gpus: q.has("semgpu") ? ["Intel UHD Graphics"] : ["NVIDIA GeForce RTX 4060"], nvidia: !q.has("semgpu"), memoriaGB: 16, livreGB: 120.4, livreGravacoesGB: 120.4, claude: !q.has("semclaude") && !q.has("socodex"), claudeDesktop: q.has("sodesktop"), codex: q.has("comcodex") || q.has("socodex") };
     case "dispositivos": return { mics: [{ nome: "Microfone (USB Audio)", padrao: true }, { nome: "Microfone (Webcam)", padrao: false }], saidas: [{ nome: "Fones de ouvido (USB Audio)", padrao: true }, { nome: "Alto-falantes (Realtek)", padrao: false }] };
     case "livre": return 120.4;
     case "pendentes": return q.has("pend") ? etapasExemplo.slice(3) : [];

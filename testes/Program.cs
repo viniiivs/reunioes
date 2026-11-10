@@ -111,7 +111,13 @@ Environment.SetEnvironmentVariable("PATH", @"C:\Windows\System32");
 var primeiraDoUsuario = Environment.ExpandEnvironmentVariables(pathUsuario.Split(';', StringSplitOptions.RemoveEmptyEntries).FirstOrDefault() ?? "");
 Checar(primeiraDoUsuario == "" || Sistema.PathAtual().Contains(primeiraDoUsuario), "PATH atual inclui o do usuario sem reiniciar");
 Environment.SetEnvironmentVariable("PATH", pathAntes);
-Console.WriteLine($"   (Claude Code: {Sistema.Claude() ?? "nao achado"}; app Claude: {Sistema.ClaudeDesktop()})");
+Console.WriteLine($"   (Claude Code: {Sistema.Claude() ?? "nao achado"}; app Claude: {Sistema.ClaudeDesktop()}; Codex: {Sistema.Codex() ?? "nao achado"})");
+Checar(Sistema.Codex() is not { } cx || cx.EndsWith("codex.exe", StringComparison.OrdinalIgnoreCase), "Codex do npm roda pelo codex.exe, nao pelo .cmd");
+var iaAntes = cfg.Ia;
+cfg.Ia = "codex";
+Checar(Ia.Escolhida(cfg) == (Sistema.Codex() != null ? "codex" : Sistema.Claude() != null ? "claude" : null), "IA escolhida: a preferida, se instalada");
+cfg.Ia = iaAntes;
+Checar(Ia.Escolhida(cfg, "codex") == (Sistema.Codex() != null ? "codex" : null), "addon que exige o Codex nao cai no Claude");
 
 // ---------------------------------------------------------------- addons
 // Pasta de addons temporaria (nunca a do usuario). O de comando roda de verdade; o do Claude so
@@ -128,6 +134,7 @@ void NovoAddon(string id, string json, params (string, string)[] arquivos)
 }
 NovoAddon("sem-prompt", """{ "nome": "Sem prompt", "tipo": "claude" }""");
 NovoAddon("fuga", """{ "nome": "Fuga", "tipo": "claude", "prompt": "..\\..\\config-teste.json" }""");
+NovoAddon("ia-ruim", """{ "nome": "IA ruim", "tipo": "ia", "ia": "gemini" }""", ("prompt.md", "x"));
 NovoAddon("Maiusculo", """{ "nome": "X", "tipo": "comando", "comando": ["a"] }""");
 NovoAddon("falha", """{ "nome": "Falha", "tipo": "comando", "comando": ["{python}", "-c", "import sys; print('deu ruim', file=sys.stderr); sys.exit(3)"] }""");
 var todos = Addons.Listar();
@@ -135,6 +142,7 @@ Checar(todos.First(a => a.Id == "falas").Erro == null && todos.First(a => a.Id =
 Checar(todos.First(a => a.Id == "sem-prompt").Erro?.Contains("prompt") == true, "addon sem prompt.md aparece com erro");
 Checar(todos.First(a => a.Id == "fuga").Erro != null, "prompt fora da pasta do addon e recusado");
 Checar(todos.First(a => a.Id == "Maiusculo").Erro?.Contains("Nome da pasta") == true, "id invalido aparece com erro");
+Checar(todos.First(a => a.Id == "ia-ruim").Erro?.Contains("\"ia\"") == true, "\"ia\" desconhecida aparece com erro (e tipo \"ia\" vale como claude)");
 
 var ba = "2026-10-14_17-08_rec";
 File.WriteAllText(Path.Combine(raiz, ba, $"{ba}.transcricao.md"),
@@ -185,6 +193,30 @@ if (Environment.GetEnvironmentVariable("REUNIOES_TESTE_CLAUDE") == "1")
     Esperar("eco");
     var eco = AddonLido("eco");
     Checar(eco["resultado"]?["markdown"]?.ToString().Contains("## Eco") == true, $"addon do Claude devolve markdown ({eco["resultado"]?["markdown"] ?? eco["erro"]})");
+}
+
+// Codex de verdade (conta do ChatGPT): addon que exige o Codex e o resumo com esquema.
+if (Environment.GetEnvironmentVariable("REUNIOES_TESTE_CODEX") == "1")
+{
+    NovoAddon("eco-codex", """{ "nome": "Eco", "tipo": "ia", "ia": "codex", "modelo": "haiku", "prazoMinutos": 3 }""",
+        ("prompt.md", "Responda exatamente com duas linhas: '## Eco' e depois o nome de quem falou primeiro seguido do carimbo [hh:mm:ss] da fala. {nome} e o dono do app."));
+    g.RodarAddon(ba, "eco-codex");
+    Esperar("eco-codex");
+    var eco = AddonLido("eco-codex");
+    Checar(eco["resultado"]?["markdown"]?.ToString().Contains("## Eco") == true, $"addon no Codex devolve markdown ({eco["resultado"]?["markdown"] ?? eco["erro"]})");
+    Checar(eco["resultado"]?["modelo"]?.ToString().StartsWith("gpt") == true, $"modelo do Codex registrado ({eco["resultado"]?["modelo"]})");
+
+    cfg.Ia = "codex";
+    cfg.Resumo.Ativo = true; cfg.Resumo.Nome = "Vini";
+    var json = Path.Combine(raiz, ba, $"{ba}.resumo.json");
+    var erroResumo = Path.Combine(raiz, ba, $"{ba}.resumo.erro");
+    File.Delete(json); File.Delete(erroResumo);
+    g.Resumir(ba);
+    for (int i = 0; i < 360 && !File.Exists(json) && !File.Exists(erroResumo); i++) Thread.Sleep(500);
+    var r = File.Exists(json) ? System.Text.Json.Nodes.JsonNode.Parse(File.ReadAllText(json)) : null;
+    Checar(r?["ia"]?.ToString() == "codex" && r["veredito"] != null && r["acoes"] is System.Text.Json.Nodes.JsonArray,
+        $"resumo pelo Codex segue o esquema ({(r == null ? File.ReadAllText(erroResumo) : r["veredito"])})");
+    cfg.Ia = ""; cfg.Resumo.Ativo = false;
 }
 
 Console.WriteLine(falhas == 0 ? "\nTUDO OK" : $"\n{falhas} FALHA(S)");

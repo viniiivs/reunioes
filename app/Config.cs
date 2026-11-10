@@ -18,12 +18,14 @@ public sealed class Config
     public string? Mic { get; set; }
     public string? Saida { get; set; }
     public bool GravarSozinho { get; set; } = true;
+    public List<string> GravarSozinhoSem { get; set; } = new();   // plataformas fora da gravacao automatica (ex.: "discord")
     public string? Atalho { get; set; } = "ctrl+alt+g";
     public bool IniciarComWindows { get; set; } = true;
     public bool AtualizarSozinho { get; set; } = true;
     public ResumoConfig Resumo { get; set; } = new();
     /// <summary>Ids dos addons instalados que nao devem aparecer (instalar ja liga).</summary>
     public List<string> AddonsDesligados { get; set; } = new();
+    public string Ia { get; set; } = "";   // "claude", "codex" ou "" (a que estiver instalada)
     /// <summary>Token do Hugging Face cifrado com DPAPI (so este usuario neste PC decifra).</summary>
     public string? HfTokenCifrado { get; set; }
     public bool ConfiguracaoConcluida { get; set; }
