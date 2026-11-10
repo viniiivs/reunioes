@@ -132,6 +132,7 @@ function estado(g) {
     case "fila": return `<span class="estado fila"><i class="ph ph-hourglass" aria-hidden="true"></i>Na fila</span>`;
     case "pausada": return `<span class="estado pausada" title="Continua de onde parou${g.etapa ? ` (${f.esc(g.etapa)})` : ""}"><i class="ph ph-pause-circle" aria-hidden="true"></i>Pausada</span>`;
     case "gravando": return `<span class="estado gravando"><i class="ph ph-record" aria-hidden="true"></i>Gravando agora</span>`;
+    case "falhou": return `<span class="estado falhou" title="${f.esc(g.erro)}"><i class="ph ph-warning" aria-hidden="true"></i>Não gravou</span>`;
     case "incompleta": return `<span class="estado incompleta" title="O gravador foi interrompido e o arquivo FLAC ficou sem o fim. Precisa ser reparado antes de transcrever."><i class="ph ph-warning" aria-hidden="true"></i>Áudio incompleto</span>`;
     default: return `<span class="estado sem">Não transcrita</span>`;
   }
