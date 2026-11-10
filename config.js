@@ -40,6 +40,7 @@ const SECOES = [
   { id: "audio", titulo: "Áudio", icone: "microphone", render: rAudio, ler: lAudio },
   { id: "extras", titulo: "Gravação", icone: "record", render: rExtras, ler: lExtras },
   { id: "resumo", titulo: "Resumo com IA", icone: "sparkle", render: rResumo, ler: lResumo },
+  { id: "addons", titulo: "Addons", icone: "puzzle-piece", so: "config", render: rAddons, ler: lAddons },
   { id: "instalar", titulo: "Instalação", icone: "download-simple", so: "setup", render: rInstalar },
   { id: "pronto", titulo: "Pronto", icone: "check", so: "setup", render: rPronto },
   { id: "motor", titulo: "Motor", icone: "cpu", so: "config", render: rMotor },
@@ -189,6 +190,26 @@ function rResumo() {
 }
 function lResumo() {
   cfg.resumo = { ativo: ligado("resumoAtivo"), nome: $("#rNome").value.trim(), apelidos: $("#rApelidos").value.trim(), contexto: $("#rContexto").value.trim() };
+}
+
+// Addons: pastas em %APPDATA%/Reunioes/addons. Instalar já liga; o interruptor só esconde a aba.
+let addons = [];
+function rAddons() {
+  const linhas = addons.map((a) => a.erro
+    ? `<div class="info"><span class="ruim"><i class="ph ph-warning" aria-hidden="true"></i> ${esc(a.nome)}</span><b>${esc(a.erro)}</b></div>`
+    : interruptor(`addon-${a.id}`, a.ligado, esc(a.nome), esc(a.descricao || "")));
+  return `
+    <h2>Addons</h2>
+    <div class="pilha">${linhas.join("") || `<div class="info"><span>Nenhum addon instalado.</span></div>`}</div>
+    <div class="botoes">
+      <button class="btn" id="instalarAddon"><i class="ph ph-plus"></i> Instalar addon</button>
+      <button class="btn" id="pastaAddons"><i class="ph ph-folder-open"></i> Abrir pasta</button>
+    </div>`;
+}
+function lAddons() {
+  const daqui = new Set(addons.map((a) => a.id));
+  cfg.addonsDesligados = [...(cfg.addonsDesligados || []).filter((id) => !daqui.has(id)),
+    ...addons.filter((a) => !a.erro && !ligado(`addon-${a.id}`)).map((a) => a.id)];
 }
 
 function rInstalar() {
@@ -483,6 +504,17 @@ conteudo.addEventListener("click", async (e) => {
   if (t.closest("#instalarAgora")) {
     if (!SETUP && sujo && !(await salvar())) return;
     return instalar();
+  }
+  if (t.closest("#pastaAddons")) return chamar("pastaAddons").catch((er) => avisar(er.message));
+  if (t.closest("#instalarAddon")) {
+    try {
+      const id = await chamar("instalarAddon");
+      if (!id) return;
+      addons = await chamar("addons");
+      desenharSecao("addons");
+      avisar(`${addons.find((a) => a.id === id)?.nome || id} instalado.`);
+    } catch (er) { avisar(er.message); }
+    return;
   }
   if (t.closest("#verLog")) return chamar("abrirLog").catch((er) => avisar(er.message));
   if (t.closest("#procurarAtualizacao")) { desenharAtualizacao(await chamar("procurarAtualizacao")); return; }
@@ -788,6 +820,7 @@ if (naWeb) await prepararWeb();
 else if (SETUP && !sis.nvidia) { cfg.usarGpu = false; if (cfg.modelo === "large-v3") cfg.modelo = "small"; }
 if (!SETUP) {
   pendentes = await chamar("pendentes");
+  if (!naWeb) addons = await chamar("addons").catch(() => []);
   const e = await chamar("estado").catch(() => null);
   atalhoOcupado = !!e?.servico?.rodando && e.servico.atalhoOk === false;
 }

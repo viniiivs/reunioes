@@ -86,47 +86,22 @@
   color: var(--faint); font-size: 12px;
 }
 
-/* ---- fato ou fake ---- */
+/* ---- estados (alerta, erro) ---- */
 .veredito-topo.alerta { background: var(--alerta-soft); }
 .veredito-topo.alerta .ph { color: var(--alerta); }
 .erro-linha { display: flex; align-items: center; gap: 6px; margin: 12px 0 0; color: var(--danger-texto); font-size: 13px; }
 .vazio .erro-linha { margin: 0 0 14px; }
-.checagem-lista { list-style: none; margin: 8px 0 0; padding: 0 !important; }
-.filtros-checagem { margin-top: 16px; }
-.checagem-lista .checado {
-  display: grid; gap: 4px; margin: 0 !important; padding: 14px 0;
-  border-top: 1px solid var(--line); line-height: 1.5;
-}
-.checagem-lista .checado:first-child { border-top: 0; }
-.checado-topo { display: flex; align-items: center; flex-wrap: wrap; gap: 4px 8px; margin-bottom: 2px; }
-.checado-topo small { color: var(--muted); font-size: 12px; }
-.checado b { font-weight: 600; line-height: 1.4; overflow-wrap: anywhere; }
-.checado p { margin: 0; overflow-wrap: anywhere; }
-.fontes { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 4px; min-width: 0; }
-.fonte {
-  display: inline-flex; align-items: center; gap: 4px; max-width: 100%;
-  height: 24px; padding: 0 10px; border-radius: 999px;
-  background: var(--surface-2); color: var(--accent); font: 500 12px/1 var(--font); text-decoration: none;
-}
-.fonte span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.fonte .ph { flex: none; font-size: 13px; }
-@media (hover: hover) {
-  .fonte:hover { background: var(--hover); }
-  .fonte:hover span { text-decoration: underline; text-underline-offset: 2px; }
-}
 /* no toque: alvos de 40 px (o carimbo cresce só na área de toque, não no desenho) */
 @media (pointer: coarse) {
-  .fonte { height: 40px; padding: 0 14px; }
-  .btn.checar-trecho { height: 40px; padding: 0 16px; }
+  .acoes-trecho .btn { height: 40px; padding: 0 16px; }
   .tempo-link { position: relative; }
   .tempo-link::after { content: ""; position: absolute; inset: -12px -6px; }
-  .filtros-checagem .pessoa { position: relative; }
-  .filtros-checagem .pessoa::after { content: ""; position: absolute; inset: -8px -3px; }
 }
 
-/* botão que aparece junto do trecho selecionado na transcrição */
-.checar-trecho { position: fixed; z-index: 5; box-shadow: var(--shadow); }
-.checar-trecho[hidden] { display: none; }
+/* botões dos addons que aparecem junto do trecho selecionado na transcrição */
+.acoes-trecho { position: fixed; z-index: 5; display: flex; gap: 8px; }
+.acoes-trecho .btn { box-shadow: var(--shadow); }
+.acoes-trecho[hidden] { display: none; }
 
 /* ---- transcricao ---- */
 .barra-texto {
@@ -215,3 +190,31 @@ mark { background: var(--accent-soft); color: inherit; border-radius: 3px; box-s
 .acoes-lista li.feita b { color: var(--muted); text-decoration: line-through; text-decoration-color: var(--faint); }
 .acoes-lista li b { transition: color 160ms ease-out; }
 @media (prefers-reduced-motion: reduce) { .marcar, .marcar .ph { transition: none; } }
+
+/* ---- addons: resultado em markdown (md.js) ---- */
+.md { line-height: 1.55; overflow-wrap: anywhere; }
+.md > :first-child { margin-top: 0; }
+.md h2 { margin: 26px 0 8px; }
+.md h3 { margin: 20px 0 6px; font: 600 13px/1.3 var(--font-display); color: var(--muted); }
+.md p { margin: 0 0 10px; }
+.md ul, .md ol { margin: 0 0 10px; padding-left: 20px; }
+.md li.tarefa { display: flex; gap: 6px; align-items: flex-start; margin-left: -20px; list-style: none; }
+.md li.tarefa .ph { flex: none; margin-top: 4px; color: var(--muted); }
+.md li.tarefa.feita span { color: var(--muted); text-decoration: line-through; }
+.md code { padding: 1px 4px; border-radius: 4px; background: var(--surface-2); font: 12px var(--mono); }
+.md pre { margin: 0 0 10px; padding: 10px 12px; border-radius: var(--r); background: var(--surface-2); overflow-x: auto; }
+.md pre code { padding: 0; background: none; }
+.md blockquote { margin: 0 0 10px; padding: 2px 0 2px 12px; border-left: 3px solid var(--line); color: var(--muted); }
+.md hr { margin: 18px 0; border: 0; border-top: 1px solid var(--line); }
+.md .link-md { color: var(--accent); text-underline-offset: 2px; }
+.tabela-md { margin: 0 0 12px; overflow-x: auto; }
+.tabela-md table { border-collapse: collapse; font-size: 13px; }
+.tabela-md th, .tabela-md td { padding: 6px 10px; border-bottom: 1px solid var(--line); text-align: left; vertical-align: top; }
+.tabela-md th { font-weight: 600; color: var(--muted); }
+
+/* addon com trechos: um bloco por trecho, separados por linha */
+.secao-addon { margin: 26px 0 8px; }
+.resumo > .secao-addon:first-child { margin-top: 0; }
+.trecho-addon { padding: 12px 0; border-top: 1px solid var(--line); }
+.trecho-addon:first-of-type { border-top: 0; padding-top: 0; }
+.md > :last-child { margin-bottom: 0; }

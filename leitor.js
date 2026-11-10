@@ -1,23 +1,19 @@
 import { chamar, aoMudar, naWeb } from "./ponte.js";
 import * as f from "./fmt.js";
+import { markdown } from "./md.js";
 
 const $ = (s) => document.querySelector(s);
 const q = new URLSearchParams(location.search);
 const base = q.get("b") || "";
 const area = $("#texto");
 const painelResumo = $("#resumo");
-const painelChecagem = $("#checagem");
 let falas = [];
 let pessoa = null;
 let resumo = null;
 let estadoResumo = null;
 let resumoAtivo = true;
-let checagem = null;       // { itens, gerado_em, modelo, reuniao_checada }
-let checando = false;
-let checagemErro = null;
-let podeChecar = true;
-let filtroVeredito = null;   // chip escolhido na aba Fato ou fake (null = todas)
 let trechoEscolhido = null;   // { trecho, quem, tempo } da seleção na transcrição
+let addons = [];   // addons ligados: { id, nome, icone, descricao, botao, botaoTrecho, pode, resultado, rodando, erro }
 let nomeEu = null;   // nome da pessoa (Configurações > Resumo); só muda o que aparece, o arquivo segue com "Eu"
 const rotulo = (q) => (q === "Eu" && nomeEu ? nomeEu : q);
 
@@ -27,38 +23,44 @@ const RE_FALA = /^\*\*\[(\d\d:\d\d:\d\d)\] (.+?):\*\*\s*(.*)$/;
 
 // ---------------------------------------------------------------- abas
 
-const ABAS = ["resumo", "texto", "checagem"];
+const FIXAS = ["resumo", "texto"];
+let ABAS = [...FIXAS];   // + "addon-<id>" de cada addon ligado (criadas ao carregar)
 let aba = "resumo";
+let abaPedida = q.get("aba");   // pode ser a de um addon, que só existe depois de carregar
 function abrirAba(qual) {
   aba = ABAS.includes(qual) ? qual : "resumo";
   for (const a of ABAS) {
     $(`#aba-${a}`).setAttribute("aria-selected", String(a === aba));
     $(`#painel-${a}`).hidden = a !== aba;
   }
-  if (aba !== "texto") esconderChecarTrecho();
+  if (aba !== "texto") esconderAcoesTrecho();
+  $(`#aba-${aba}`).scrollIntoView({ block: "nearest", inline: "nearest" });
   botaoCopiar();
 }
-// o Copiar do topo copia o resumo ou a checagem; a transcrição tem o dela na barra de busca
+// o Copiar do topo copia o resumo ou o resultado do addon; a transcrição tem o dela na barra de busca
 function botaoCopiar() {
   const b = $("#copiar-resumo");
-  b.hidden = !(aba === "resumo" ? resumo : aba === "checagem" ? checagem?.itens?.length : false);
-  const t = aba === "checagem" ? "Copiar a checagem (veredito, explicação e fonte)" : "Copiar o resumo (veredito, ações e tópicos)";
+  const ad = addonDaAba();
+  b.hidden = !(aba === "resumo" ? resumo : ad ? textoAddon(ad) : false);
+  const t = ad ? `Copiar o resultado de ${ad.nome}` : "Copiar o resumo (veredito, ações e tópicos)";
   b.title = t; b.setAttribute("aria-label", t);
 }
-for (const a of ABAS) $(`#aba-${a}`).addEventListener("click", () => abrirAba(a));
+$(".abas").addEventListener("click", (e) => {
+  const b = e.target.closest("[role=tab]");
+  if (b) abrirAba(b.id.slice(4));
+});
 $(".abas").addEventListener("keydown", (e) => {
   if (e.key !== "ArrowLeft" && e.key !== "ArrowRight") return;
   const outra = ABAS[(ABAS.indexOf(aba) + (e.key === "ArrowRight" ? 1 : ABAS.length - 1)) % ABAS.length];
   abrirAba(outra);
   $(`#aba-${outra}`).focus();
 });
-abrirAba(q.get("aba") || "resumo");
+abrirAba(abaPedida || "resumo");
 
 // ---------------------------------------------------------------- carregar
 
 area.innerHTML = `<div class="esqueleto" aria-hidden="true">${"<div></div>".repeat(9)}</div>`;
 painelResumo.innerHTML = `<div class="esqueleto" aria-hidden="true"><div class="grande"></div>${"<div></div>".repeat(6)}</div>`;
-painelChecagem.innerHTML = painelResumo.innerHTML;
 
 async function carregar(primeira) {
   try {
@@ -85,16 +87,13 @@ async function carregar(primeira) {
     resumoAtivo = r.resumoAtivo;
     estadoResumo = g?.resumo || null;
     desenharResumo();
-    checagem = r.checagem || null;
-    checando = !!r.checando;
-    checagemErro = r.checagemErro || null;
-    podeChecar = r.podeChecar !== false;
-    desenharChecagem();
+    addons = r.addons || [];
+    montarAddons();
+    addons.forEach(desenharAddon);
   } catch (e) {
     if (primeira) {
       area.innerHTML = `<div class="vazio"><h2>Não consegui abrir a transcrição</h2><p>${f.esc(e.message)}</p></div>`;
       painelResumo.innerHTML = "";
-      painelChecagem.innerHTML = "";
     }
   }
 }
@@ -102,7 +101,7 @@ async function carregar(primeira) {
 // Atualiza o resumo quando o Claude termina (o host avisa qualquer mudança na pasta).
 aoMudar((m) => {
   if (m.evento === "aba") return abrirAba(m.aba);
-  if (m.evento === "mudou" && (!resumo || checando || estadoResumo?.estado === "gerando" || estadoResumo?.estado === "fila")) carregar(false);
+  if (m.evento === "mudou" && (!resumo || estadoResumo?.estado === "gerando" || estadoResumo?.estado === "fila" || addons.some((a) => a.rodando))) carregar(false);
 });
 
 // ---------------------------------------------------------------- resumo
@@ -198,137 +197,123 @@ function irPara(tempo) {
   setTimeout(() => alvo.classList.remove("destaque"), 1200);
 }
 
-// ---------------------------------------------------------------- fato ou fake
+// ---------------------------------------------------------------- addons
+// Cada addon ligado vira uma aba depois da Transcrição. O resultado é markdown.
 
-const VEREDITOS = {
-  fato: { txt: "Fato", ic: "ph-check-circle" },
-  fake: { txt: "Fake", ic: "ph-x-circle" },
-  impreciso: { txt: "Impreciso", ic: "ph-warning-circle" },
-  sem_dados: { txt: "Sem dados", ic: "ph-question" },
-};
-const dominio = (u) => { try { return new URL(u).hostname.replace(/^www\./, ""); } catch { return u; } };
+const idAba = (a) => `addon-${a.id}`;
+function addonDaAba() { return aba.startsWith("addon-") ? addons.find((a) => idAba(a) === aba) : null; }
 
-function itemChecado(x) {
-  const v = VEREDITOS[x.veredito] || VEREDITOS.sem_dados;
-  const meta = [x.quem ? f.esc(rotulo(x.quem)) : null,
-    x.tempo ? `<button class="tempo-link" data-tempo="${f.esc(x.tempo)}" title="Ver na transcrição">${f.esc(x.tempo)}</button>` : null].filter(Boolean).join(" em ");
-  const fontes = (x.fontes || []).map((fo) =>
-    `<a class="fonte" href="${f.esc(fo.url)}" target="_blank" rel="noopener noreferrer" title="${f.esc(fo.titulo || fo.url)}"><i class="ph ph-link-simple" aria-hidden="true"></i><span>${f.esc(dominio(fo.url))}</span></a>`).join("");
-  return `<li class="checado">
-    <div class="checado-topo"><span class="selo ${x.veredito in VEREDITOS ? x.veredito : "sem_dados"}"><i class="ph ${v.ic}" aria-hidden="true"></i>${v.txt}</span>${meta ? `<small>${meta}</small>` : ""}</div>
-    <b>${f.esc(x.afirmacao)}</b>
-    <p>${f.esc(x.explicacao)}</p>
-    ${fontes ? `<div class="fontes">${fontes}</div>` : ""}
-  </li>`;
+// Cria (ou refaz, se a lista mudou) as abas e os painéis dos addons.
+function montarAddons() {
+  const ids = addons.map(idAba);
+  if (ids.join() === ABAS.slice(FIXAS.length).join()) return;
+  document.querySelectorAll("[data-addon-aba], .painel-addon").forEach((el) => el.remove());
+  const abas = $(".abas"), aviso = $("#aviso");
+  for (const a of addons) {
+    const id = idAba(a);
+    abas.insertAdjacentHTML("beforeend", `<button role="tab" id="aba-${id}" data-addon-aba aria-controls="painel-${id}" aria-selected="false"><i class="ph ph-${f.esc(a.icone)}" aria-hidden="true"></i>${f.esc(a.nome)}</button>`);
+    aviso.insertAdjacentHTML("beforebegin", `<section class="painel painel-addon" id="painel-${id}" role="tabpanel" aria-labelledby="aba-${id}" data-addon="${f.esc(a.id)}" hidden><div class="resumo"></div></section>`);
+  }
+  ABAS = [...FIXAS, ...ids];
+  const quero = ABAS.includes(abaPedida) ? abaPedida : aba;
+  abaPedida = null;
+  abrirAba(quero);
 }
 
-function desenharChecagem() {
-  botaoCopiar();
-  const itens = checagem?.itens || [];
-  const trechos = itens.filter((x) => x.origem === "trecho");
-  const daReuniao = itens.filter((x) => x.origem !== "trecho");
-  const erro = checagemErro ? `<p class="erro-linha"><i class="ph ph-warning" aria-hidden="true"></i> A última checagem falhou: ${f.esc(checagemErro)}</p>` : "";
-  const pesquisando = checando ? `
-    <div class="veredito-topo"><i class="ph ph-circle-notch girando" aria-hidden="true"></i>
-      <div><strong>O Claude está pesquisando na web</strong>
-      <span>Confere cada afirmação, uma a uma: leva de 30 segundos a alguns minutos, conforme o tamanho da reunião. Esta aba atualiza sozinha.</span></div></div>` : "";
+// Resultado inteiro em texto: trechos escolhidos primeiro, depois o da reunião.
+function textoAddon(a) {
+  const r = a.resultado || {};
+  return [...(r.trechos || []).map((t) => t.markdown), r.markdown].filter(Boolean).join("\n\n---\n\n");
+}
 
-  if (!itens.length && !checagem?.reuniao_checada) {
-    const falta = !podeChecar ? (naWeb ? "Precisa de uma chave da API da Anthropic: cole em Configurações, na seção Resumo com IA." : "Precisa do Claude Code instalado neste computador.") : "";
-    painelChecagem.innerHTML = pesquisando || `
-      <div class="vazio"><h2>Fato ou fake</h2>
-        <p>O Claude confere tudo o que dá para verificar na reunião (números, datas, leis, notícias), cada frase no contexto da conversa, pesquisa na web e diz se é fato ou fake, com a fonte.</p>
-        <p>Para checar só uma frase, selecione o trecho na transcrição.</p>
-        ${erro}${falta ? `<p>${falta}</p>` : ""}
-        <button class="btn primario" data-acao="checar"${podeChecar ? "" : " disabled"}><i class="ph ph-seal-check" aria-hidden="true"></i> Checar a reunião</button></div>`;
+function desenharAddon(a) {
+  const el = document.querySelector(`#painel-${idAba(a)} .resumo`);
+  if (!el) return;
+  if (aba === idAba(a)) botaoCopiar();
+  const res = a.resultado;
+  const trechos = res?.trechos || [];
+  const erro = a.erro ? `<p class="erro-linha"><i class="ph ph-warning" aria-hidden="true"></i> A última execução falhou: ${f.esc(a.erro)}</p>` : "";
+  const rodando = a.rodando ? `
+    <div class="veredito-topo"><i class="ph ph-circle-notch girando" aria-hidden="true"></i>
+      <div><strong>${f.esc(a.nome)} está rodando</strong><span>Esta aba atualiza sozinha.</span></div></div>` : "";
+  if (!res?.markdown && !trechos.length) {
+    el.innerHTML = rodando || `
+      <div class="vazio"><h2>${f.esc(a.nome)}</h2>
+        ${a.descricao ? `<p>${f.esc(a.descricao)}</p>` : ""}
+        ${a.pode ? "" : `<p>Precisa do Claude Code instalado neste computador.</p>`}
+        ${erro}
+        <button class="btn primario" data-rodar${a.pode ? "" : " disabled"}><i class="ph ph-${f.esc(a.icone)}" aria-hidden="true"></i> ${f.esc(a.botao)}</button></div>`;
     return;
   }
-
-  const conta = (v) => itens.filter((x) => x.veredito === v).length;
-  const partes = [["fake", "fake", "fakes"], ["impreciso", "imprecisa", "imprecisas"], ["fato", "fato", "fatos"], ["sem_dados", "sem dados", "sem dados"]]
-    .map(([v, um, varios]) => { const n = conta(v); return n ? `${n} ${n === 1 ? um : varios}` : null; }).filter(Boolean);
-  const alerta = conta("fake") + conta("impreciso") > 0;
-  const quando = checagem.gerado_em ? new Date(checagem.gerado_em) : null;
-  // muitas afirmações: chips para filtrar por veredito (mesmo componente do filtro de pessoas)
-  const FILTROS = [["fake", "Fake"], ["impreciso", "Imprecisas"], ["fato", "Fatos"], ["sem_dados", "Sem dados"]];
-  if (filtroVeredito && !conta(filtroVeredito)) filtroVeredito = null;
-  const chips = itens.length > 5 ? `<nav class="pessoas filtros-checagem" aria-label="Filtrar por veredito">${
-    [[null, "Todas", itens.length], ...FILTROS.map(([v, t]) => [v, t, conta(v)]).filter(([, , n]) => n)].map(([v, t, n]) =>
-      `<button class="pessoa" aria-pressed="${filtroVeredito === v}" data-filtro="${v || ""}">${t} <b>${n}</b></button>`).join("")}</nav>` : "";
-  const filtra = (xs) => (filtroVeredito ? xs.filter((x) => x.veredito === filtroVeredito) : xs);
-  const lista = (t, xs) => (xs = filtra(xs)).length ? `${t ? `<h2>${t}</h2>` : ""}<ol class="checagem-lista">${xs.map(itemChecado).join("")}</ol>` : "";
-  const dois = filtra(trechos).length && filtra(daReuniao).length;
-  painelChecagem.innerHTML = `
-    ${pesquisando || `<div class="veredito-topo${alerta ? " alerta" : ""}">
-      <i class="ph ${alerta ? "ph-seal-warning" : "ph-seal-check"}" aria-hidden="true"></i>
-      <div><strong>${itens.length ? f.plural(itens.length, "afirmação checada", "afirmações checadas") : "Nada para checar"}</strong>
-      <span>${itens.length ? partes.join(", ") : "A reunião não tem afirmações que dê para verificar em fontes públicas."}</span></div></div>`}
-    ${erro}
-    ${chips}
-    ${lista(dois ? "Trechos que você escolheu" : "", trechos)}
-    ${lista(dois ? "Da reunião" : "", daReuniao)}
+  const quando = res.gerado_em ? new Date(res.gerado_em) : null;
+  const dois = trechos.length && res.markdown;
+  el.innerHTML = `
+    ${rodando}${erro}
+    ${dois ? `<h2 class="secao-addon">Trechos que você escolheu</h2>` : ""}
+    ${trechos.map((t) => `<div class="md trecho-addon">${markdown(t.markdown)}</div>`).join("")}
+    ${dois ? `<h2 class="secao-addon">Da reunião</h2>` : ""}
+    ${res.markdown ? `<div class="md">${markdown(res.markdown)}</div>` : ""}
     <div class="rodape-resumo">
-      <span>Checado pelo Claude com busca na web${quando ? ` em ${f.diaCurto(quando)} às ${f.hora(quando)}` : ""}. Pode errar: abra a fonte.</span>
-      <button class="btn" data-acao="checar"${checando || !podeChecar ? " disabled" : ""}><i class="ph ph-arrows-clockwise" aria-hidden="true"></i> ${checagem.reuniao_checada ? "Checar de novo" : "Checar a reunião"}</button>
+      <span>${f.esc(a.nome)}${res.versao ? ` ${f.esc(res.versao)}` : ""}${res.modelo ? ` (${f.esc(res.modelo)})` : ""}${quando ? `, ${f.diaCurto(quando)} às ${f.hora(quando)}` : ""}.</span>
+      <button class="btn" data-rodar${a.rodando || !a.pode ? " disabled" : ""}><i class="ph ph-arrows-clockwise" aria-hidden="true"></i> ${res.markdown ? "Rodar de novo" : f.esc(a.botao)}</button>
     </div>`;
 }
 
-async function pedirChecagem(args, botao) {
-  if (botao) botao.disabled = true;
+document.addEventListener("click", async (e) => {
+  const painel = e.target.closest(".painel-addon");
+  if (!painel) return;
+  const t = e.target.closest("[data-tempo]");
+  if (t) return irPara(t.dataset.tempo);
+  const link = e.target.closest("a.link-md");
+  if (link && !naWeb) { e.preventDefault(); chamar("abrirLink", { url: link.href }).catch((er) => avisar(er.message)); return; }
+  const b = e.target.closest("[data-rodar]");
+  if (!b) return;
+  b.disabled = true;
+  rodarAddon(addons.find((x) => x.id === painel.dataset.addon), {}, b);
+});
+
+async function rodarAddon(a, args, botao) {
   try {
-    await chamar("checar", { base, ...args });
-    checando = true;
-    checagemErro = null;
-    abrirAba("checagem");
-    desenharChecagem();
-    $("#painel-checagem .resumo").scrollTop = 0;
+    await chamar("rodarAddon", { base, id: a.id, ...args });
+    a.rodando = true; a.erro = null;
+    abrirAba(idAba(a));
+    desenharAddon(a);
+    document.querySelector(`#painel-${idAba(a)} .resumo`).scrollTop = 0;
   } catch (err) { if (botao) botao.disabled = false; avisar(err.message); }
 }
 
-painelChecagem.addEventListener("click", (e) => {
-  const fi = e.target.closest("[data-filtro]");
-  if (fi) {
-    filtroVeredito = filtroVeredito === (fi.dataset.filtro || null) ? null : fi.dataset.filtro || null;
-    desenharChecagem();
-    return painelChecagem.querySelector(`[data-filtro="${filtroVeredito || ""}"]`)?.focus();
-  }
-  const t = e.target.closest("[data-tempo]");
-  if (t) return irPara(t.dataset.tempo);
-  const a = e.target.closest("a.fonte");
-  // no app de Windows o link abre no navegador padrão, não numa janela do WebView
-  if (a && !naWeb) { e.preventDefault(); chamar("abrirLink", { url: a.href }).catch((er) => avisar(er.message)); return; }
-  const b = e.target.closest("[data-acao=checar]");
-  if (b) pedirChecagem({}, b);
-});
-
-// Selecionar um trecho na transcrição mostra "Checar trecho" junto da seleção.
-function esconderChecarTrecho() { $("#checar-trecho").hidden = true; trechoEscolhido = null; }
+// Selecionar um trecho na transcrição mostra, junto da seleção, o botão de cada addon que roda em trecho.
+function esconderAcoesTrecho() { $("#acoes-trecho").hidden = true; trechoEscolhido = null; }
 function seguirSelecao() {
   const sel = getSelection();
   const txt = sel?.toString().replace(/\s+/g, " ").trim() || "";
-  if (aba !== "texto" || !sel.rangeCount || txt.length < 8 || !area.contains(sel.anchorNode) || !area.contains(sel.focusNode)) return esconderChecarTrecho();
+  const comTrecho = addons.filter((a) => a.botaoTrecho && a.pode);
+  if (!comTrecho.length || aba !== "texto" || !sel.rangeCount || txt.length < 8 || !area.contains(sel.anchorNode) || !area.contains(sel.focusNode)) return esconderAcoesTrecho();
   const fala = (sel.anchorNode.nodeType === 1 ? sel.anchorNode : sel.anchorNode.parentElement)?.closest(".fala");
   const dado = fala ? falas.find((x) => x.tempo === fala.dataset.tempo) : null;
   trechoEscolhido = { trecho: txt.slice(0, 2000), quem: dado?.quem || null, tempo: dado?.tempo || null };
   const r = sel.getRangeAt(0).getBoundingClientRect();
-  const b = $("#checar-trecho");
-  b.hidden = false;
-  const w = b.offsetWidth, h = b.offsetHeight;
-  // no toque o menu do sistema fica em cima da seleção: o botão vai embaixo
+  const caixa = $("#acoes-trecho");
+  const html = comTrecho.map((a) => `<button class="btn primario" type="button" data-trecho-addon="${f.esc(a.id)}"><i class="ph ph-${f.esc(a.icone)}" aria-hidden="true"></i> ${f.esc(a.botaoTrecho)}</button>`).join("");
+  if (caixa.innerHTML !== html) caixa.innerHTML = html;
+  caixa.hidden = false;
+  const w = caixa.offsetWidth, h = caixa.offsetHeight;
+  // no toque o menu do sistema fica em cima da seleção: os botões vão embaixo
   const embaixo = matchMedia("(pointer: coarse)").matches || r.top - h - 8 < area.getBoundingClientRect().top;
-  b.style.left = `${Math.max(8, Math.min(innerWidth - w - 8, r.left + r.width / 2 - w / 2))}px`;
-  b.style.top = `${Math.min(innerHeight - h - 8, embaixo ? r.bottom + 8 : r.top - h - 8)}px`;
+  caixa.style.left = `${Math.max(8, Math.min(innerWidth - w - 8, r.left + r.width / 2 - w / 2))}px`;
+  caixa.style.top = `${Math.min(innerHeight - h - 8, embaixo ? r.bottom + 8 : r.top - h - 8)}px`;
 }
 let quadroSelecao = 0;
 document.addEventListener("selectionchange", () => { cancelAnimationFrame(quadroSelecao); quadroSelecao = requestAnimationFrame(seguirSelecao); });
 area.addEventListener("scroll", () => { if (trechoEscolhido) seguirSelecao(); }, { passive: true });
-$("#checar-trecho").addEventListener("pointerdown", (e) => e.preventDefault());   // não perde a seleção ao clicar
-$("#checar-trecho").addEventListener("click", () => {
+$("#acoes-trecho").addEventListener("pointerdown", (e) => e.preventDefault());   // não perde a seleção ao clicar
+$("#acoes-trecho").addEventListener("click", (e) => {
+  const b = e.target.closest("[data-trecho-addon]");
   const t = trechoEscolhido;
-  if (!t) return;
+  if (!b || !t) return;
   getSelection().removeAllRanges();
-  esconderChecarTrecho();
-  pedirChecagem(t);
+  esconderAcoesTrecho();
+  rodarAddon(addons.find((x) => x.id === b.dataset.trechoAddon), t);
 });
 
 // ---------------------------------------------------------------- transcricao
@@ -407,7 +392,8 @@ $("#copiar").addEventListener("click", () =>
 
 // Texto simples, para colar em e-mail, chat ou nota: as ações viram uma lista de tarefas.
 $("#copiar-resumo").addEventListener("click", () => {
-  if (aba === "checagem") return copiarChecagem();
+  const ad = addonDaAba();
+  if (ad) return textoAddon(ad) && copiar(textoAddon(ad), `${ad.nome}: resultado copiado.`);
   const r = resumo;
   if (!r) return;
   const lista = (t, itens) => itens?.length ? [`${t}:`, ...itens, ""] : [];
@@ -423,20 +409,6 @@ $("#copiar-resumo").addEventListener("click", () => {
   ].join("\n").trim();
   copiar(txt, "Resumo copiado.");
 });
-
-function copiarChecagem() {
-  const itens = checagem?.itens || [];
-  if (!itens.length) return;
-  const txt = [
-    `Fato ou fake: ${$("#titulo").textContent}`, "",
-    ...itens.map((x) => {
-      const quem = [x.quem ? rotulo(x.quem) : null, x.tempo].filter(Boolean).join(" em ");
-      return [`[${(VEREDITOS[x.veredito] || VEREDITOS.sem_dados).txt.toUpperCase()}] ${x.afirmacao}${quem ? ` (${quem})` : ""}`,
-        x.explicacao, ...(x.fontes || []).map((fo) => `Fonte: ${fo.url}`), ""].join("\n");
-    }),
-  ].join("\n").trim();
-  copiar(txt, "Checagem copiada.");
-}
 
 // ‹ Reuniões: dentro da lista fecha o quadro; aberto sozinho (janela própria) não tem para onde voltar.
 const embutido = window.parent !== window && !!window.parent.fecharLeitor;

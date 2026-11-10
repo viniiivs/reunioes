@@ -87,24 +87,42 @@ const resumoExemplo = {
   resumo: ["Proposta do cliente novo pronta, aguardando revisão de valores.", "Demo com a Ana combinada para quinta."],
   gerado_em: hoje.toISOString(), modelo: "claude-sonnet",
 };
-const checagemExemplo = {
-  itens: [
-    {afirmacao: "O Brasil tem uns 250 milhões de habitantes",quem: "Ana",tempo: "00:00:06",veredito: "fake",explicacao: "O IBGE estima 213,4 milhões de habitantes em julho de 2025, bem abaixo de 250 milhões.",fontes: [{titulo: "Brasil tem 213,4 milhões de habitantes em 2025, segundo o IBGE",url: "https://www.itatiaia.com.br/brasil/brasil-tem-213-4-milhoes-de-habitantes-em-2025-segundo-dados-do-ibge/"}],origem: "reuniao"},
-    {afirmacao: "Brasília foi inaugurada em 1960",quem: "Bruno",tempo: "00:00:14",veredito: "fato",explicacao: "Brasília foi inaugurada em 21 de abril de 1960 por Juscelino Kubitschek.",fontes: [{titulo: "Construção de Brasília",url: "https://www.infoescola.com/historia-do-brasil/construcao-de-brasilia"}],origem: "reuniao"},
-    {afirmacao: "O PIB do Brasil cresceu uns 3% no ano passado (2025), segundo o IBGE",quem: "Eu",tempo: "00:00:22",veredito: "impreciso",explicacao: "O IBGE informou alta de 2,3% do PIB em 2025, não 3%.",fontes: [{titulo: "PIB do Brasil cresce 2,3% em 2025",url: "https://www.poder360.com.br/poder-economia/pib-do-brasil-cresce-23-em-2025/"}],origem: "reuniao"},
-    {afirmacao: "A LGPD está valendo desde 2018",quem: "Bruno",tempo: "00:00:31",veredito: "impreciso",explicacao: "A lei é de 2018, mas entrou em vigor em set/2020; as sanções valem desde 1º/8/2021.",fontes: [{titulo: "Empresas agora correm risco de multa ao violar a LGPD",url: "https://mercadoeconsumo.com.br/28/02/2023/economia/empresas-agora-correm-risco-de-multa-ao-violar-a-lei-de-protecao-de-dados/amp/"}],origem: "reuniao"},
-    {afirmacao: "A multa da LGPD é de até 2% do faturamento",quem: "Bruno",tempo: "00:00:31",veredito: "fato",explicacao: "A multa simples é de até 2% do faturamento no Brasil no último exercício, excluídos tributos.",fontes: [{titulo: "Multas por descumprimento da LGPD podem chegar a R$ 50 milhões",url: "https://diariodonordeste.verdesmares.com.br/ultima-hora/seu-direito/multas-por-descumprimento-da-lgpd-comecam-a-ser-aplicadas-valor-pode-chegar-a-r-50-milhoes-1.3117586"}],origem: "reuniao"},
-    {afirmacao: "A multa da LGPD tem limite de 50 milhões por infração",quem: "Ana",tempo: "00:00:42",veredito: "fato",explicacao: "A multa é limitada a R$ 50 milhões por infração.",fontes: [{titulo: "Multas por descumprimento da LGPD podem chegar a R$ 50 milhões",url: "https://diariodonordeste.verdesmares.com.br/ultima-hora/seu-direito/multas-por-descumprimento-da-lgpd-comecam-a-ser-aplicadas-valor-pode-chegar-a-r-50-milhoes-1.3117586"}],origem: "reuniao"},
-    {afirmacao: "O Pix foi lançado em 2020 pelo Banco Central",quem: "Eu",tempo: "00:00:49",veredito: "fato",explicacao: "O Pix foi lançado oficialmente em 16 de novembro de 2020 pelo Banco Central.",fontes: [{titulo: "Pix comemora 5 anos com mais de R$ 70 trilhões em movimentações",url: "https://www.tecmundo.com.br/mercado/408625-pix-comemora-5-anos-com-mais-de-r-70-trilhoes-em-movimentacoes.htm"}],origem: "reuniao"},
-    {afirmacao: "O Pix já passa de 150 milhões de usuários",quem: "Eu",tempo: "00:00:49",veredito: "fato",explicacao: "Dados de 2025 apontam ~162,8 milhões de pessoas físicas e cerca de 180 milhões de usuários no total.",fontes: [{titulo: "Pix comemora 5 anos com mais de R$ 70 trilhões em movimentações",url: "https://www.tecmundo.com.br/mercado/408625-pix-comemora-5-anos-com-mais-de-r-70-trilhoes-em-movimentacoes.htm"}],origem: "reuniao"},
-    {afirmacao: "A Selic hoje está em 15%",quem: "Bruno",tempo: "00:01:00",veredito: "fake",explicacao: "Em 23/10/2026 a meta Selic está em 13,75% ao ano, definida pelo Copom em setembro.",fontes: [{titulo: "Taxa SELIC Hoje: 13,75% - Atualizada em 23/10/2026",url: "https://www.meelion.com/indicadores-financeiros/selic/"}],origem: "reuniao"},
-    {afirmacao: "O Everest tem 8.848 metros",quem: "Bruno",tempo: "00:01:12",veredito: "fato",explicacao: "A altura oficial é 8.848,86 m (China e Nepal, 2020), arredondada para 8.848 m.",fontes: [{titulo: "Adiós disputa: esta es la medida oficial del Monte Everest",url: "https://www.elfinanciero.com.mx/mundo/adios-disputa-esta-es-la-medida-oficial-del-monte-everest/"}],origem: "reuniao"},
-    {afirmacao: "A água ferve a 90 graus ao nível do mar",quem: "Eu (citando o cliente)",tempo: "00:01:20",veredito: "fake",explicacao: "Ao nível do mar, a água ferve a 100 °C; só em altitude ferve a menos.",fontes: [{titulo: "Influência da Pressão Externa sobre o Ponto de Ebulição",url: "https://www.preparaenem.com/quimica/influencia-pressao-externa-sobre-ponto-ebulicao.htm"}],origem: "reuniao"},
-    {afirmacao: "O Python foi criado por Guido van Rossum em 1991",quem: "Ana (citando o cliente)",tempo: "00:01:28",veredito: "fato",explicacao: "Guido van Rossum lançou o Python 0.9.0 em fevereiro de 1991.",fontes: [{titulo: "Python (programming language)",url: "https://dlab.epfl.ch/wikispeedia/wpcd/wp/p/Python_%2528programming_language%2529.htm"}],origem: "reuniao"},
-  ],
-  reuniao_checada: true, gerado_em: hoje.toISOString(), modelo: "claude-sonnet",
-};
-let checagemSim = null, checandoSim = false;
+// addons fictícios: "ata" já tem resultado (?addons), "riscos" nunca rodou; ?muitosaddons soma mais 4 abas
+const ataExemplo = `## Ata da reunião
+
+**Participantes:** Ana, Bruno e Eu
+
+### Decisões
+1. A proposta do cliente novo vai com os valores revisados [00:00:15].
+2. Demo com a Ana na **quinta** [00:00:26].
+
+### Pendências
+- [x] Revisar os valores da proposta (Eu)
+- [ ] Mandar o convite da demo (Eu)
+
+| Assunto | Responsável | Prazo |
+|---|---|---|
+| Proposta | Eu | hoje à tarde |
+| Demo | Ana | quinta |
+
+> Próxima reunião: segunda, mesmo horário.
+
+Modelo de ata: https://www.gov.br/pt-br`;
+const riscoTrecho = (t) => `[[alerta: Risco]] **${t.slice(0, 80)}**\nDepende de outra pessoa para andar.`;
+const riscosExemplo = `## 2 riscos
+
+[[erro: Alto]] **Prazo apertado da proposta**
+A revisão só acontece hoje à tarde [00:00:15].
+
+[[alerta: Médio]] **Demo depende da agenda da Ana**
+Ainda sem convite enviado [00:00:26].`;
+const addonsSim = [
+  { id: "ata", nome: "Ata formal", icone: "file-text", descricao: "Ata com participantes, decisões e pendências.", botao: "Gerar ata", versao: "1.0", tipo: "claude", ligado: true },
+  { id: "riscos", nome: "Riscos", icone: "warning-diamond", descricao: "Aponta riscos e dependências citados na conversa.", botao: "Procurar riscos", botaoTrecho: "Ver risco", versao: "0.2", tipo: "comando", ligado: true },
+  { id: "quebrado", nome: "quebrado", icone: "puzzle-piece", descricao: null, botao: "Rodar", tipo: "claude", ligado: true, erro: "Falta o arquivo do prompt (prompt.md)." },
+];
+const extrasSim = ["Tradução", "Perguntas", "E-mail de follow-up", "Pontos de atrito"].map((nome, i) => ({ id: `extra${i}`, nome, icone: "puzzle-piece", descricao: null, botao: "Rodar", tipo: "claude", ligado: true }));
+const resultadosSim = {};
 const configExemplo = {
   pastaGravacoes: "C:\\Users\\voce\\Documents\\Reuniões", pastaMotor: "C:\\Users\\voce\\AppData\\Local\\Reunioes-motor",
   idioma: "pt", modelo: "large-v3", usarGpu: true, separarVozes: false, mic: null, saida: null,
@@ -142,23 +160,26 @@ async function simular(cmd, args) {
         falantes: k > 0 && g.estado === "transcrevendo" ? ["Ana", "Eu"] : g.falantes,
       }))).flat();
     case "ler":
-      if (checagemSim === null) checagemSim = q.has("checagem") ? structuredClone(checagemExemplo) : false;
       return { texto: textoExemplo, gravacao: exemplo.find((g) => g.base === args.base) || exemplo[1], resumo: q.has("semresumo") ? null : resumoExemplo, resumoAtivo: true,
-        checagem: checagemSim || null, checando: checandoSim || q.has("checando"), checagemErro: q.has("checagemerro") ? "O Claude não respondeu em 20 minutos." : null, podeChecar: !q.has("semclaude") };
-    case "checar":
-      // pesquisa fictícia: 1,2 s depois chega o resultado (trecho soma no topo; reunião troca os itens)
-      checandoSim = true;
+        addons: !q.has("addons") && !q.has("muitosaddons") ? [] : [...addonsSim, ...(q.has("muitosaddons") ? extrasSim : [])].filter((a) => !a.erro).map((a) => {
+          if (!(a.id in resultadosSim)) resultadosSim[a.id] = { rodando: false, resultado: a.id === "ata" ? { markdown: ataExemplo, gerado_em: hoje.toISOString(), modelo: "claude-sonnet", versao: a.versao }
+            : a.id === "riscos" && q.has("trechos") ? { markdown: riscosExemplo, gerado_em: hoje.toISOString(), versao: a.versao, trechos: [{ texto: "consegue marcar comigo para quinta", quem: "Ana", tempo: "00:00:26", markdown: riscoTrecho("Demo marcada para quinta"), gerado_em: hoje.toISOString() }] } : null };
+          return { ...a, pode: a.tipo !== "claude" || !q.has("semclaude"), ...resultadosSim[a.id], erro: q.has("addonerro") && a.id === "riscos" ? "O addon não terminou em 10 minutos." : null };
+        }) };
+    case "rodarAddon":
+      resultadosSim[args.id] = { ...resultadosSim[args.id], rodando: true };
       setTimeout(() => {
-        const base = checagemSim || { itens: [], reuniao_checada: false };
-        const trecho = args.trecho ? [{ afirmacao: args.trecho.slice(0, 90), quem: args.quem, tempo: args.tempo, veredito: "sem_dados",
-          explicacao: "Não achei fonte pública confiável sobre isso: parece um assunto interno da reunião.", fontes: [], origem: "trecho" }] : [];
-        checagemSim = args.trecho ? { ...base, itens: [...trecho, ...base.itens] }
-          : { ...structuredClone(checagemExemplo), itens: [...base.itens.filter((x) => x.origem === "trecho"), ...checagemExemplo.itens] };
-        checagemSim.gerado_em = new Date().toISOString();
-        checandoSim = false;
+        const antes = resultadosSim[args.id].resultado || {};
+        const agora = new Date().toISOString();
+        const md = args.id === "ata" ? ataExemplo : riscosExemplo;
+        resultadosSim[args.id] = { rodando: false, resultado: args.trecho
+          ? { ...antes, trechos: [{ texto: args.trecho, quem: args.quem, tempo: args.tempo, markdown: riscoTrecho(args.trecho), gerado_em: agora }, ...(antes.trechos || [])] }
+          : { markdown: md, gerado_em: agora, modelo: args.id === "ata" ? "claude-sonnet" : null, trechos: antes.trechos || [] } };
         ouvintes.forEach((f) => f({ evento: "mudou" }));
       }, 1200);
       return null;
+    case "addons": return q.has("semaddons") ? [] : addonsSim;
+    case "instalarAddon": return null;
     case "estado": return { gravando: q.has("gravando"), servico: { rodando: true, app: q.has("nomic") ? "Zoom" : null, atalhoOk: true }, gravarSozinho: !q.has("auto0"), atalho: "ctrl+alt+g", motorPronto: true, atualizacao: { estado: q.has("upd") ? "pronta" : "atual", nova: "1.1.0", versao: "1.0.0" } };
     case "config": return { ...configExemplo };
     case "sistema": return { versao: "1.0.0", gpus: q.has("semgpu") ? ["Intel UHD Graphics"] : ["NVIDIA GeForce RTX 4060"], nvidia: !q.has("semgpu"), memoriaGB: 16, livreGB: 120.4, livreGravacoesGB: 120.4, claude: !q.has("semclaude") };
