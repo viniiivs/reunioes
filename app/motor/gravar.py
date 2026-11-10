@@ -38,15 +38,28 @@ class Canal:
 
     def __init__(self, p, info, caminho):
         self.taxa = int(info["defaultSampleRate"])
-        self.canais = max(1, min(2, info["maxInputChannels"]))
         self.fila = queue.Queue()
-        self.arq = sf.SoundFile(caminho, "w", samplerate=self.taxa, channels=1,
-                                format="FLAC", subtype="PCM_16")
         self.escrito = 0
         self.pico = 0
-        self.stream = p.open(format=pa.paInt16, channels=self.canais, rate=self.taxa,
-                             input=True, input_device_index=info["index"],
-                             frames_per_buffer=self.taxa // 20, stream_callback=self._cb)
+        self.stream = self._abrir(p, info)   # antes do arquivo: dispositivo que nao abre nao deixa FLAC vazio
+        self.arq = sf.SoundFile(caminho, "w", samplerate=self.taxa, channels=1,
+                                format="FLAC", subtype="PCM_16")
+
+    def _abrir(self, p, info):
+        """O WASAPI compartilhado so aceita certos numeros de canais (caixa/fone 5.1 ou 7.1, microfone
+        em matriz, alguns so o proprio): tenta o do dispositivo, depois 2, 1 e os de surround. Tudo vira mono."""
+        n = max(1, info["maxInputChannels"])
+        erro = None
+        for ch in dict.fromkeys((n, 2, 1, 8, 6, 4)):   # Realtek em 5.1/7.1 recusa 2 (-9998)
+            try:
+                s = p.open(format=pa.paInt16, channels=ch, rate=self.taxa,
+                           input=True, input_device_index=info["index"],
+                           frames_per_buffer=self.taxa // 20, stream_callback=self._cb)
+                self.canais = ch
+                return s
+            except OSError as e:
+                erro = e
+        raise erro
 
     def _cb(self, dados, n, _t, _s):
         self.fila.put(dados)
@@ -85,9 +98,7 @@ class Canal:
         except Exception:  # noqa: BLE001
             pass
         try:
-            self.stream = p.open(format=pa.paInt16, channels=self.canais, rate=self.taxa,
-                                 input=True, input_device_index=info["index"],
-                                 frames_per_buffer=self.taxa // 20, stream_callback=self._cb)
+            self.stream = self._abrir(p, info)
             return True
         except Exception:  # noqa: BLE001
             return False
@@ -225,8 +236,32 @@ def main():
     if os.path.exists(arq_eu):
         raise SystemExit(f"[erro] ja existe: {arq_eu}")
 
+    # dispositivo escolhido; se nao abrir, o padrao do Windows; se nada abrir, erro claro no log (o app mostra)
+    canais = []
+    for qual, info, pad, arq in (("o microfone", mic, mic_pad, arq_eu), ("a saida de som", loop, loop_pad, arq_outros)):
+        erro = None
+        for d in [info] + ([pad] if pad and pad["index"] != info["index"] else []):
+            try:
+                canais.append(Canal(p, d, arq))
+                break
+            except OSError as e:
+                erro = erro or e
+        else:
+            for c in canais:
+                c.fechar()
+            p.terminate()
+            for f in (arq_eu, arq_outros):
+                if os.path.exists(f):
+                    os.remove(f)
+            dizer(f"[erro] Não consegui abrir {qual} ({info['name']}): {erro}")   # dizer: sai em UTF-8
+            raise SystemExit(1)
+        if d is not info:
+            dizer(f"[aviso] {info['name']} nao abriu ({erro}); usando o padrao do Windows: {d['name']}")
+        if arq == arq_eu:
+            mic = d
+        else:
+            loop = d
     dizer(f"[mic]   {mic['name']}\n[saida] {loop['name']}\n[grava] {base}.*.flac")
-    canais = [Canal(p, mic, arq_eu), Canal(p, loop, arq_outros)]
     apps = MonitorApps()
     apps.start()
     inicio = dt.datetime.now().astimezone()

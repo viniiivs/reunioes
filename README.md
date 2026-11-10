@@ -59,6 +59,7 @@ O que só o app de Windows faz: gravar automaticamente quando a reunião começa
 
 ## Novidades
 
+- **1.0.28** (10/11/2026): grava com caixa de som ou fone configurado em 5.1/7.1 (antes a gravação morria na hora e ficava "Áudio incompleto"); se o dispositivo escolhido não abrir, usa o padrão do Windows; gravação que não conseguiu começar aparece como "Não gravou", com o motivo.
 - **1.0.27** (10/11/2026): gravar pelo botão e fechar a janela não corta mais a gravação; teste de microfone e fone em Configurações › Áudio (nível ao vivo, gravar 5 s e ouvir de volta, som de teste); fone que cai no meio é reaberto sem parar a gravação.
 - **1.0.26** (10/11/2026): desligar "Gravar automaticamente", ou tirar um app da lista, no meio de uma gravação automática faz ela não parar mais automaticamente: continua até você parar.
 - **1.0.25** (10/11/2026): a gravação automática do Discord não se divide mais em um arquivo por fala: ela espera 3 minutos de silêncio, em vez de 45 segundos, antes de considerar que a chamada acabou.

@@ -62,6 +62,8 @@ const exemplo = [
   { base: "h", inicio: dia(3, 8, 0), duracao: 1500, bytes: 70000000, estado: "fila", falantes: null, apps: null },
   { base: "e", inicio: dia(4, 11, 40), duracao: 15, bytes: 52000, estado: "sem", falantes: null, apps: null },
   { base: "f", inicio: dia(6, 15, 0), duracao: null, bytes: 88000000, estado: "incompleta", falantes: null, apps: null },
+  { base: "i", inicio: dia(6, 9, 30), duracao: null, bytes: 400, estado: "falhou", falantes: null, apps: null, auto: "Discord",
+    erro: "Não consegui abrir o microfone (Microfone (Realtek Audio)): [Errno -9999] Unanticipated host error" },
 ];
 const textoExemplo = `# Reuniao exemplo
 

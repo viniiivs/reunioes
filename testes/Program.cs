@@ -64,6 +64,24 @@ finally
     try { falso.Kill(true); } catch { }   // o py.exe e o python.exe filho
 }
 
+// gravador que nao abriu o dispositivo (so o log) ou que caiu (FLAC sem fim + traceback): a lista mostra o motivo
+foreach (var (b, log, flac) in new[] {
+    ("2026-11-10_16-15", "[erro] Não consegui abrir o microfone (Mic X): [Errno -9999] Unanticipated host error\n", false),
+    ("2026-11-10_16-19", "[mic]   Mic X\nTraceback (most recent call last):\n  File \"gravar.py\", line 1\nOSError: [Errno -9996] Invalid device\n", true),
+    ("2026-11-10_16-20", "[mic]   Mic X\n", true) })
+{
+    Directory.CreateDirectory(Path.Combine(raiz, b));
+    File.WriteAllText(Path.Combine(raiz, b, $"{b}.gravar.log"), log);
+    if (flac) File.WriteAllText(Path.Combine(raiz, b, $"{b}.eu.flac"), "x");
+}
+var porBase = g.Listar().ToDictionary(x => x.Base);
+Checar(porBase.TryGetValue("2026-11-10_16-15", out var f1) && f1.Estado == "falhou" && f1.Erro!.StartsWith("Não consegui abrir o microfone"), "so o log com [erro]: aparece como falhou, com o motivo");
+Checar(porBase["2026-11-10_16-19"] is { Estado: "falhou", Erro: "OSError: [Errno -9996] Invalid device" }, "FLAC sem fim + traceback: falhou com a ultima linha");
+Checar(porBase["2026-11-10_16-20"] is { Estado: "incompleta", Erro: null }, "FLAC sem fim sem erro no log: continua audio incompleto");
+Checar(g.Pasta("2026-11-10_16-15")[1].Trim('"') == Path.Combine(raiz, "2026-11-10_16-15"), "a que falhou abre a pasta");
+g.Excluir("2026-11-10_16-15");
+Checar(!Directory.Exists(Path.Combine(raiz, "2026-11-10_16-15")), "a que falhou da para excluir");
+
 // transcricao: o motor escreve o proprio log (sobrevive ao app fechar) e a lista acompanha a porcentagem
 // sem depender do aviso de arquivo do Windows. Motor falso num venv temporario, sem GPU.
 var motor = Path.Combine(raiz, "_motor");

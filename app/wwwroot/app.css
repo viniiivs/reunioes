@@ -104,6 +104,7 @@ a.btn { text-decoration: none; }
 .estado.sem, .estado.fila, .estado.incompleta { color: var(--muted); }
 .estado.transcrevendo .ph { color: var(--accent); }
 .estado.gravando { color: var(--danger); font-weight: 600; }
+.estado.falhou { color: var(--danger); }
 .etapa { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
 /* transcrevendo: "Transcrevendo 42%" com a barra embaixo, na largura da coluna */
 .progresso { display: flex; flex-direction: column; gap: 4px; flex: 1; min-width: 0; max-width: 160px; }

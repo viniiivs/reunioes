@@ -15,14 +15,15 @@ public record Gravacao(
     string Inicio,           // ISO 8601
     double? Duracao,         // segundos; null = FLAC sem cabecalho final (gravacao interrompida)
     long Bytes,
-    string Estado,           // gravando | incompleta | sem | fila | transcrevendo | pausada | pronta
+    string Estado,           // gravando | falhou | incompleta | sem | fila | transcrevendo | pausada | pronta
     string? Etapa,           // "2/3 transcrevendo os outros"; na pausada, o que ja ficou pronto
     string[]? Falantes,      // nomes na transcricao
     App[]? Apps,             // apps que tocaram som durante a gravacao
     Resumo? Resumo,
     string? Auto,            // app que fez o servico comecar a gravar (null = gravacao manual)
     bool Vozes,              // tem .falantes.json (da para nomear as vozes)
-    int? Pct = null);        // transcrevendo: quanto da transcricao inteira ja foi (0-99); null = preparando
+    int? Pct = null,         // transcrevendo: quanto da transcricao inteira ja foi (0-99); null = preparando
+    string? Erro = null);    // falhou: por que o gravador parou (do gravar.log)
 
 /// <summary>Resumo da IA: estado gerando | fila | pronto | erro.</summary>
 public record Resumo(string Estado, string? Veredito, bool? PrecisaAgir, int? Acoes, string? Erro, int? Feitas = null);
@@ -192,6 +193,7 @@ public sealed partial class Gravacoes
                 : File.GetCreationTime(eu).ToString("s");
 
             var duracao = new[] { DuracaoFlac(eu), DuracaoFlac(Caminho(b, "outros.flac")) }.Max();
+            var erro = !fechada && duracao == null && !gravando.Contains(b) ? ErroGravacao(Caminho(b, "gravar.log")) : null;
 
             var md = Caminho(b, "transcricao.md");
             string[]? falantes = null;
@@ -225,6 +227,7 @@ public sealed partial class Gravacoes
             else if (filaAgora.Contains(b)) estado = "fila";
             else if (falantes != null) estado = "pronta";
             else if (Pausada(b) is { } feito) { estado = "pausada"; etapa = feito; }
+            else if (erro != null) estado = "falhou";
             else if (duracao == null) estado = "incompleta";
             else estado = "sem";
 
@@ -239,7 +242,7 @@ public sealed partial class Gravacoes
             else lock (trava) vistasTranscrevendo.Remove(b);   // pausada ou voltou para a fila
 
             lista.Add(new Gravacao(b, inicio, duracao, bytes, estado, etapa, falantes, apps,
-                falantes != null ? EstadoResumo(b) : null, auto, File.Exists(Caminho(b, "falantes.json")), pct));
+                falantes != null ? EstadoResumo(b) : null, auto, File.Exists(Caminho(b, "falantes.json")), pct, erro));
         }
         return lista.OrderByDescending(g => g.Inicio, StringComparer.Ordinal).ToList();
     }
@@ -274,7 +277,8 @@ public sealed partial class Gravacoes
         foreach (var sub in Directory.GetDirectories(Dir))
         {
             var n = Path.GetFileName(sub);
-            if (File.Exists(Path.Combine(sub, n + ".eu.flac"))) yield return n;
+            // so o log: o gravador nao conseguiu abrir o microfone ou a saida (a lista mostra o motivo)
+            if (File.Exists(Path.Combine(sub, n + ".eu.flac")) || File.Exists(Path.Combine(sub, n + ".gravar.log"))) yield return n;
         }
     }
 
@@ -330,6 +334,20 @@ public sealed partial class Gravacoes
     }
 
     /// <summary>Duracao pelo STREAMINFO do FLAC. Total de amostras 0 = arquivo nao finalizado.</summary>
+    /// <summary>Motivo de o gravador ter parado: a linha "[erro]" dele ou o fim do traceback do Python.</summary>
+    static string? ErroGravacao(string log)
+    {
+        if (!File.Exists(log)) return null;
+        try
+        {
+            var linhas = LerCompartilhado(log).Split('\n').Select(l => l.Trim()).Where(l => l.Length > 0).ToList();
+            var e = linhas.LastOrDefault(l => l.StartsWith("[erro]"))?[6..].Trim()
+                ?? (linhas.Any(l => l.StartsWith("Traceback")) ? linhas[^1] : null);
+            return e is { Length: > 300 } ? e[..300] + "…" : e;
+        }
+        catch (IOException) { return null; }
+    }
+
     static double? DuracaoFlac(string p)
     {
         if (!File.Exists(p)) return null;
@@ -351,7 +369,7 @@ public sealed partial class Gravacoes
 
     void Validar(string b)
     {
-        if (b.Contains('/') || b.Contains('\\') || b.Contains("..") || !File.Exists(Caminho(b, "eu.flac")))
+        if (b.Contains('/') || b.Contains('\\') || b.Contains("..") || !File.Exists(Caminho(b, "eu.flac")) && !File.Exists(Caminho(b, "gravar.log")))
             throw new InvalidOperationException("Gravação não encontrada.");
     }
 
