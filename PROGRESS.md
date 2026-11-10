@@ -45,6 +45,7 @@ Resumo vivo do projeto: decisões, o que está pronto, o que falta e onde fica c
 - 1.0.20 addons (abas extras por pasta local, tipos claude/comando, trecho, selos); Fato ou fake vira addon externo, 10/11/2026
 
 ## Pendente / conhecido
+- Commit a5bca86 (listas aninhadas no markdown dos addons) ainda NÃO publicado: precisa da 1.0.21 (aguardando o dono). Addons pessoais em D:/Projetos/reunioes-addons: fato-ou-fake e tcc (sessão de terapia, Eu = terapeuta; opus).
 - Addons: publicado na 1.0.20 (10/11/2026). Falta o primeiro addon novo de verdade do dono. Ideias se precisar: rodar addon num trecho selecionado, addon na versão web.
 - Gravações curtas mostram "0 falantes".
 - Tela preta no app (visto uma vez na 1.0.6): causa não confirmada.
