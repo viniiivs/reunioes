@@ -9,8 +9,10 @@ static class Program
     [DllImport("user32.dll")] static extern bool ShowWindow(IntPtr h, int cmd);
     [DllImport("user32.dll", CharSet = CharSet.Unicode)] static extern IntPtr FindWindow(string? cls, string title);
 
+    public const string RetomarInstalacao = "--retomar-instalacao";
+
     [STAThread]
-    static void Main()
+    static void Main(string[] args)
     {
         // Ganchos do instalador (instalar, atualizar, desinstalar) rodam e saem antes de qualquer janela.
         VelopackApp.Build()
@@ -27,7 +29,8 @@ static class Program
         }
         ApplicationConfiguration.Initialize();
         Nucleo.AoAbrir();
-        var inicio = Nucleo.Config.ConfiguracaoConcluida ? "index.html" : "config.html?modo=setup";
+        var inicio = Nucleo.Config.ConfiguracaoConcluida ? "index.html"
+            : args.Contains(RetomarInstalacao) ? "config.html?modo=setup&instalar" : "config.html?modo=setup";
         Application.Run(new JanelaWeb(inicio, JanelaWeb.TituloPrincipal, new Size(1260, 760)));
     }
 }

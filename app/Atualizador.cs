@@ -59,11 +59,11 @@ public sealed class Atualizador
         mudou();
     }
 
-    /// <summary>Fecha o app, troca os arquivos e abre a versao nova.</summary>
-    public void AplicarEReiniciar()
+    /// <summary>Fecha o app, troca os arquivos e abre a versao nova (com args, se vierem).</summary>
+    public void AplicarEReiniciar(string[]? args = null)
     {
         if (pendente == null || Estado != "pronta") throw new InvalidOperationException("Nenhuma atualização baixada.");
-        mgr.ApplyUpdatesAndRestart(pendente);
+        mgr.ApplyUpdatesAndRestart(pendente, args);
     }
 
     static string Simplificar(Exception ex) =>

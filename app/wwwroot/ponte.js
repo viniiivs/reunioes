@@ -136,11 +136,18 @@ const etapasExemplo = [
 ];
 
 function simularInstalacao() {
-  let i = 1, pct = 0;
+  const q = new URLSearchParams(location.search);
+  const off = q.has("pend") ? 3 : 0;   // ?pend: só as 2 últimas etapas faltam
+  let i = 1 + off, pct = 0;
   const t = setInterval(() => {
     pct += 20;
-    ouvintes.forEach((f) => f({ evento: "instalacao", etapa: i, total: 5, titulo: etapasExemplo[i - 1].titulo, detalhe: i === 4 ? `${(pct * 0.031).toFixed(2)} de 3,10 GB` : "Downloading torch", pct: i === 4 ? pct : null, estado: "rodando" }));
+    ouvintes.forEach((f) => f({ evento: "instalacao", etapa: i - off, total: 5 - off, titulo: etapasExemplo[i - 1].titulo, detalhe: i === 4 ? `${(pct * 0.031).toFixed(2)} de 3,10 GB` : "Downloading torch", pct: i === 4 ? pct : null, estado: "rodando" }));
     if (pct >= 100) { pct = 0; i++; }
+    if (q.has("insterro") && i === 4 && pct === 40) {
+      clearInterval(t);
+      ouvintes.forEach((f) => f({ evento: "instalacao", etapa: 1, total: 2, estado: "erro", erro: "OSError: [WinError 1314] O cliente não tem o privilégio necessário" }));
+      return;
+    }
     if (i > 5) { clearInterval(t); ouvintes.forEach((f) => f({ evento: "instalacao", etapa: 5, total: 5, estado: "fim" })); }
   }, 300);
 }
@@ -189,7 +196,11 @@ async function simular(cmd, args) {
     case "salvarConfig": return etapasExemplo;
     case "instalar": simularInstalacao(); return null;
     case "atualizacao": return { versao: "1.0.0", estado: "atual", instalado: true };
-    case "procurarAtualizacao": return { versao: "1.0.0", estado: "atual", instalado: true };
+    case "procurarAtualizacao":
+      if (!q.has("updsetup")) return { versao: "1.0.0", estado: "atual", instalado: true };
+      [10, 55, 100].forEach((pct, k) => setTimeout(() => ouvintes.forEach((f) => f({ evento: "atualizacao",
+        status: { versao: "1.0.22", nova: "1.0.23", pct, estado: pct < 100 ? "baixando" : "pronta", instalado: true } })), 600 * (k + 1)));
+      return { versao: "1.0.22", nova: "1.0.23", pct: 0, estado: "baixando", instalado: true };
     case "testarToken": return { ok: false, msg: "O token funciona, mas falta aceitar os termos do modelo (link acima)." };
     default: console.log("[simulado]", cmd, args); return null;
   }

@@ -5,6 +5,7 @@ import { esc } from "./fmt.js";
 // Uma pagina, dois modos: ?modo=setup e o assistente da primeira execucao (uma secao por passo);
 // sem isso e a tela de Configuracoes (todas as secoes, menu lateral, barra de salvar).
 const SETUP = new URLSearchParams(location.search).get("modo") === "setup";
+const RETOMAR = SETUP && new URLSearchParams(location.search).has("instalar");   // voltou de uma atualização pedida pelo erro da instalação
 const $ = (s) => document.querySelector(s);
 const conteudo = $("#conteudo");
 const rodape = $("#rodape");
@@ -321,7 +322,11 @@ aoMudar((m) => {
   if (m.evento === "instalacao") {
     for (let i = 1; i < m.etapa; i++) estadoInst[i] = { estado: "ok" };
     if (m.estado === "rodando") estadoInst[m.etapa] = { estado: "rodando", detalhe: m.detalhe, pct: m.pct };
-    if (m.estado === "erro") { estadoInst[m.etapa] = { estado: "erro" }; estadoInst.erro = m.erro; instalando = false; }
+    if (m.estado === "erro") {
+      estadoInst[m.etapa] = { estado: "erro" }; estadoInst.erro = m.erro; instalando = false;
+      // a configuração ainda não procura atualização sozinha: o erro pode já estar corrigido numa versão nova
+      if (SETUP && !naWeb && !cancelou) chamar("procurarAtualizacao").then((st) => { desenharAtualizacao(st); desenharRodape(); }).catch(() => {});
+    }
     if (m.estado === "fim") {
       for (let i = 1; i <= m.total; i++) estadoInst[i] = { estado: "ok" };
       instalando = false; instalado = true;
@@ -332,11 +337,13 @@ aoMudar((m) => {
     if (m.estado !== "rodando") desenharLateral();   // fim ou erro: libera (ou mantem travado) o menu
   } else if (m.evento === "atualizacao") {
     desenharAtualizacao(m.status);
+    if (SETUP) desenharRodape();
   }
 });
 
+let cancelou = false;
 async function instalar() {
-  instalando = true; estadoInst = {};
+  instalando = true; estadoInst = {}; cancelou = false;
   if (!naWeb) {   // "Tentar de novo" só refaz o que faltou: a lista e o número de cada etapa mudam
     const p = await chamar("pendentes").catch(() => null);
     if (p?.length) pendentes = p;
@@ -404,7 +411,12 @@ function desenharRodape() {
   if (SETUP) {
     const lista = visiveis(), atual = lista[passo].id;
     let direita;
-    if (atual === "instalar") {
+    const nova = ultimoStatus && ["disponivel", "baixando", "pronta"].includes(ultimoStatus.estado) ? ultimoStatus : null;
+    if (atual === "instalar" && estadoInst.erro && !instalando && nova) {
+      const pronta = nova.estado === "pronta";
+      direita = `<button class="btn grande" id="instalarAgora">Tentar de novo</button>
+        <button class="btn primario grande" id="atualizarETentar" ${pronta ? "" : "disabled"}><i class="ph ${pronta ? "ph-arrow-circle-up" : "ph-circle-notch girando"}"></i> ${pronta ? `Atualizar para ${esc(nova.nova)}` : `Baixando ${esc(nova.nova)}${nova.estado === "baixando" ? ` · ${nova.pct}%` : ""}`}</button>`;
+    } else if (atual === "instalar") {
       direita = instalado
         ? `<button class="btn primario grande" data-nav="prox">Continuar</button>`
         : instalando
@@ -543,7 +555,10 @@ rodape.addEventListener("click", async (e) => {
     lista[passo].ler?.(); passo--; desenhar();
   } else if (t.closest("#instalarAgora")) {
     instalar();
+  } else if (t.closest("#atualizarETentar")) {
+    chamar("aplicarAtualizacao", { retomarInstalacao: true }).catch((er) => avisar(er.message));
   } else if (t.closest("#cancelarInst")) {
+    cancelou = true;
     chamar("cancelarInstalacao");
   } else if (t.closest("#verLog")) {
     chamar("abrirLog").catch((er) => avisar(er.message));
@@ -831,7 +846,9 @@ if (!SETUP) {
 $("#versao").textContent = "versão " + sis.versao;
 $("#voltar").hidden = SETUP;
 document.title = SETUP ? "Configurar o Reuniões" : "Configurações";
+if (RETOMAR) passo = Math.max(0, visiveis().findIndex((s) => s.id === "instalar"));
 desenhar();
+if (RETOMAR) instalar();
 if (!SETUP && location.hash) irPara(location.hash.replace("#s-", "").replace("#", ""));
 // só agora a lista pode abrir esta tela: os dados já chegaram
 window.abrirSecao = abrirSecao;

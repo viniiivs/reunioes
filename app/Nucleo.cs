@@ -182,7 +182,8 @@ public static class Nucleo
                 if (Gravacoes.GravandoAgora()) throw new InvalidOperationException("Pare a gravação antes de atualizar.");
                 if (Gravacoes.TranscrevendoAgora()) throw new InvalidOperationException("Espere a transcrição terminar para atualizar.");
                 Servico.Parar();
-                Atualizador.AplicarEReiniciar();
+                // erro na instalacao do motor durante a configuracao: a versao nova volta direto para ela
+                Atualizador.AplicarEReiniciar(a["retomarInstalacao"]?.GetValue<bool>() == true ? new[] { Program.RetomarInstalacao } : null);
                 return null;
         }
         throw new InvalidOperationException("comando desconhecido: " + cmd);
