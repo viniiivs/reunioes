@@ -17,6 +17,7 @@ public sealed partial class Gravacoes
             RedirectStandardInput = true, RedirectStandardOutput = true, RedirectStandardError = true,
             StandardInputEncoding = new UTF8Encoding(false), StandardOutputEncoding = Encoding.UTF8,
         };
+        psi.Environment["PATH"] = Sistema.PathAtual();   // claude.cmd (npm) precisa achar o node instalado depois do app abrir
         foreach (var a in new[] { "-p", "--output-format", "json", "--model", modelo, "--tools", ferramentas,
                      "--no-session-persistence", "--strict-mcp-config", "--setting-sources", "",
                      "--system-prompt-file", promptArquivo })

@@ -39,17 +39,45 @@ public static class Sistema
         catch (Exception) { return -1; }
     }
 
+    /// <summary>PATH de agora (processo + maquina + usuario), lido do registro a cada chamada: quem instala
+    /// o Claude Code (npm, winget) com o app aberto nao precisa reinicia-lo.</summary>
+    public static string PathAtual() => string.Join(';',
+        new[] { EnvironmentVariableTarget.Process, EnvironmentVariableTarget.Machine, EnvironmentVariableTarget.User }
+            .Select(t => Environment.ExpandEnvironmentVariables(Environment.GetEnvironmentVariable("PATH", t) ?? ""))
+            .Where(p => p.Length > 0));
+
+    static string Pasta(Environment.SpecialFolder f, params string[] resto) =>
+        Path.Combine(new[] { Environment.GetFolderPath(f) }.Concat(resto).ToArray());
+
     public static string? Claude()
     {
-        var nativo = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".local", "bin", "claude.exe");
-        if (File.Exists(nativo)) return nativo;
-        foreach (var d in (Environment.GetEnvironmentVariable("PATH") ?? "").Split(';', StringSplitOptions.RemoveEmptyEntries))
+        var fixos = new[]
+        {
+            Pasta(Environment.SpecialFolder.UserProfile, ".local", "bin", "claude.exe"),               // instalador oficial
+            Pasta(Environment.SpecialFolder.ApplicationData, "npm", "claude.cmd"),                     // npm
+            Pasta(Environment.SpecialFolder.LocalApplicationData, "Microsoft", "WinGet", "Links", "claude.exe"),
+        };
+        foreach (var f in fixos) if (File.Exists(f)) return f;
+        foreach (var d in PathAtual().Split(';', StringSplitOptions.RemoveEmptyEntries))
             foreach (var n in new[] { "claude.exe", "claude.cmd" })
             {
                 try { var p = Path.Combine(d.Trim(), n); if (File.Exists(p)) return p; }
                 catch (ArgumentException) { }
             }
         return null;
+    }
+
+    /// <summary>App Claude (Desktop) instalado. Ele nao serve: o Claude Code que vem dentro dele fica numa
+    /// pasta que muda a cada versao. Serve so para explicar por que "ja instalei o Claude" nao basta.</summary>
+    public static bool ClaudeDesktop()
+    {
+        try
+        {
+            var local = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
+            return Directory.Exists(Path.Combine(local, "AnthropicClaude"))
+                || Directory.EnumerateDirectories(Path.Combine(local, "Packages"), "Claude_*").Any();
+        }
+        catch (Exception) { return false; }
     }
 
     public record Dispositivo(string Nome, bool Padrao);
@@ -75,5 +103,6 @@ public static class Sistema
         livreGB = Math.Round(LivreGB(c.PastaMotor), 1),
         livreGravacoesGB = Math.Round(LivreGB(c.PastaGravacoes), 1),
         claude = Claude() != null,
+        claudeDesktop = ClaudeDesktop(),
     };
 }

@@ -103,6 +103,16 @@ Checar(logMotor.Contains("[pct] 70") && logMotor.Contains("acentuação") && log
 Checar(!g.TranscrevendoAgora(), "depois de terminar, nao esta transcrevendo");
 Checar(avisos > 0, $"avisou a tela durante a transcricao ({avisos}x)");
 
+// ---------------------------------------------------------------- Claude Code
+// PATH relido do registro: inclui o do usuario mesmo que o processo tenha comecado sem ele.
+var pathUsuario = Environment.GetEnvironmentVariable("PATH", EnvironmentVariableTarget.User) ?? "";
+var pathAntes = Environment.GetEnvironmentVariable("PATH");
+Environment.SetEnvironmentVariable("PATH", @"C:\Windows\System32");
+var primeiraDoUsuario = Environment.ExpandEnvironmentVariables(pathUsuario.Split(';', StringSplitOptions.RemoveEmptyEntries).FirstOrDefault() ?? "");
+Checar(primeiraDoUsuario == "" || Sistema.PathAtual().Contains(primeiraDoUsuario), "PATH atual inclui o do usuario sem reiniciar");
+Environment.SetEnvironmentVariable("PATH", pathAntes);
+Console.WriteLine($"   (Claude Code: {Sistema.Claude() ?? "nao achado"}; app Claude: {Sistema.ClaudeDesktop()})");
+
 // ---------------------------------------------------------------- addons
 // Pasta de addons temporaria (nunca a do usuario). O de comando roda de verdade; o do Claude so
 // com REUNIOES_TESTE_CLAUDE=1 (uma chamada curta ao haiku).

@@ -507,7 +507,11 @@ conteudo.addEventListener("click", async (e) => {
     st.innerHTML = `<i class="ph ${r.ok ? "ph-check" : "ph-warning"}"></i> ${esc(r.msg)}`;
     return;
   }
-  if (t.closest("#checarClaude")) { sis = await chamar("sistema"); desenharSecao("resumo"); return; }
+  if (t.closest("#checarClaude")) {
+    sis = await chamar("sistema"); desenharSecao("resumo");
+    if (!sis.claude) avisar(sis.claudeDesktop ? "Achei o app Claude, mas não o Claude Code." : "Não achei o Claude Code neste computador.");
+    return;
+  }
   if (t.closest("#permitirMic")) {
     try { dev = await chamar("pedirMicrofone"); lAudioWeb(); desenharSecao("audio"); } catch { avisar("O navegador não liberou o microfone. Veja o cadeado na barra de endereço."); }
     return;
