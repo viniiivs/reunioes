@@ -4,6 +4,7 @@ const wv = window.chrome && window.chrome.webview;
 const pendentes = new Map();
 const ouvintes = new Set();
 let seq = 0;
+let simNiveis = null;   // simulador: níveis falsos do teste de áudio
 
 if (wv) {
   wv.addEventListener("message", (e) => {
@@ -191,6 +192,14 @@ async function simular(cmd, args) {
     case "config": return { ...configExemplo };
     case "sistema": return { versao: "1.0.0", gpus: q.has("semgpu") ? ["Intel UHD Graphics"] : ["NVIDIA GeForce RTX 4060"], nvidia: !q.has("semgpu"), memoriaGB: 16, livreGB: 120.4, livreGravacoesGB: 120.4, claude: !q.has("semclaude") && !q.has("socodex"), claudeDesktop: q.has("sodesktop"), codex: q.has("comcodex") || q.has("socodex") };
     case "dispositivos": return { mics: [{ nome: "Microfone (USB Audio)", padrao: true }, { nome: "Microfone (Webcam)", padrao: false }], saidas: [{ nome: "Fones de ouvido (USB Audio)", padrao: true }, { nome: "Alto-falantes (Realtek)", padrao: false }] };
+    case "medirAudio":
+      if (!simNiveis) simNiveis = setInterval(() => ouvintes.forEach((f) => f({ evento: "niveis", mic: q.has("semnivel") ? 0 : 0.05 + Math.random() * 0.4, saida: q.has("semnivel") ? 0 : Math.random() * 0.3 })), 50);
+      return { mic: !q.has("semmic"), saida: true };
+    case "testarMicrofone":
+      for (let resta = 5; resta > 0; resta--) { ouvintes.forEach((f) => f({ evento: "testeAudio", etapa: "gravando", resta })); await new Promise((r) => setTimeout(r, q.has("testelento") ? 4000 : 1000)); }
+      ouvintes.forEach((f) => f({ evento: "testeAudio", etapa: "tocando" })); await new Promise((r) => setTimeout(r, 1500));
+      ouvintes.forEach((f) => f({ evento: "testeAudio", etapa: "fim" })); return null;
+    case "somDeTeste": await new Promise((r) => setTimeout(r, 1600)); return null;
     case "livre": return 120.4;
     case "pendentes": return q.has("pend") ? etapasExemplo.slice(3) : [];
     case "salvarConfig": return etapasExemplo;

@@ -417,19 +417,11 @@ public sealed partial class Gravacoes
         Directory.CreateDirectory(Path.Combine(Dir, nome));   // o gravar.py usa a mesma subpasta
         var psi = Py("gravar.py", false);
         psi.ArgumentList.Add(nome);
-        psi.RedirectStandardOutput = true;
-        psi.RedirectStandardError = true;
-        var p = Process.Start(psi)!;
+        // O gravador escreve o próprio log. Antes o app lia a saída por pipe: fechar a janela no meio
+        // quebrava o pipe e o gravador morria no aviso seguinte (gravação cortada e sem fechar).
+        psi.Environment["REUNIOES_LOG"] = Caminho(nome, "gravar.log");
+        Process.Start(psi);
         EsquecerProcessos();
-        var log = Caminho(nome, "gravar.log");
-        _ = Task.Run(async () =>
-        {
-            await using var w = new StreamWriter(log, false, Encoding.UTF8) { AutoFlush = true };
-            var e = p.StandardError.ReadToEndAsync();
-            string? l;
-            while ((l = await p.StandardOutput.ReadLineAsync()) != null) await w.WriteLineAsync(l);
-            await w.WriteAsync(await e);
-        });
     }
 
     public void Transcrever(string b)

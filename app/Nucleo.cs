@@ -145,6 +145,11 @@ public static class Nucleo
             }
             case "sistema": return await Task.Run(() => Sistema.Info(Config));
             case "dispositivos": return await Task.Run(Sistema.Dispositivos);
+            case "medirAudio":
+                return await Task.Run(() => TesteAudio.Medir(a["mic"]?.GetValue<string>(), a["saida"]?.GetValue<string>(), Emitir));
+            case "pararMedicao": await Task.Run(TesteAudio.Parar); return null;
+            case "testarMicrofone": await Task.Run(() => TesteAudio.GravarEOuvir(5)); return null;
+            case "somDeTeste": await Task.Run(TesteAudio.TocarSom); return null;
             case "livre": return Math.Round(Sistema.LivreGB(a["pasta"]!.GetValue<string>()), 1);
             case "escolherPasta": return janela.EscolherPasta(a["atual"]?.GetValue<string>(), a["titulo"]?.GetValue<string>());
             case "testarToken": return await TestarToken(a["token"]?.GetValue<string>() ?? Config.HfToken);

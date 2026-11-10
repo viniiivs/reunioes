@@ -219,6 +219,27 @@ if (Environment.GetEnvironmentVariable("REUNIOES_TESTE_CODEX") == "1")
     cfg.Ia = ""; cfg.Resumo.Ativo = false;
 }
 
+// Teste de áudio com os aparelhos de verdade: medidor e reprodução (tocando silêncio, para não fazer barulho).
+if (Environment.GetEnvironmentVariable("REUNIOES_TESTE_AUDIO") == "1")
+{
+    var avisosAudio = new System.Collections.Concurrent.ConcurrentBag<string>();
+    Action<object> anotar = e => avisosAudio.Add(System.Text.Json.JsonSerializer.Serialize(e));
+    var r = (dynamic)Reunioes.TesteAudio.Medir(null, null, anotar);
+    Checar(r.mic && r.saida, $"teste de áudio abre o microfone e a saída padrão (mic={r.mic}, saida={r.saida})");
+    for (int i = 0; i < 4; i++) { Thread.Sleep(500); Reunioes.TesteAudio.Medir(null, null, anotar); }
+    var niveis = avisosAudio.Where(x => x.Contains("\"niveis\"")).ToList();
+    Checar(niveis.Count >= 25 && niveis.All(x => !x.Contains("\"mic\":null")), $"medidor manda ~20 níveis por segundo com o microfone ({niveis.Count} em 2 s; ex.: {niveis.LastOrDefault()})");
+    Console.WriteLine("      formato do mic: " + ((NAudio.CoreAudioApi.WasapiCapture)typeof(Reunioes.TesteAudio).GetField("captura", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static)!.GetValue(null)!).WaveFormat);
+    Console.WriteLine("      maior nível do mic: " + niveis.Select(x => System.Text.Json.Nodes.JsonNode.Parse(x)!["mic"]!.GetValue<double>()).Max());
+    var tocar = typeof(Reunioes.TesteAudio).GetMethod("Tocar", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static)!;
+    var sw = System.Diagnostics.Stopwatch.StartNew();
+    ((Task)tocar.Invoke(null, new object[] { new float[16000], 16000 })!).Wait();
+    Checar(sw.Elapsed.TotalSeconds is > 0.8 and < 3, $"reproduz na saída no formato dela (1 s de silêncio a 16 kHz levou {sw.Elapsed.TotalSeconds:0.0} s)");
+    Reunioes.TesteAudio.Parar();
+    Thread.Sleep(300); int antes = avisosAudio.Count; Thread.Sleep(500);
+    Checar(avisosAudio.Count == antes, "parar solta os aparelhos e o medidor para");
+}
+
 Console.WriteLine(falhas == 0 ? "\nTUDO OK" : $"\n{falhas} FALHA(S)");
 foreach (var a in Directory.GetFiles(raiz, "*", SearchOption.AllDirectories)) File.SetAttributes(a, FileAttributes.Normal);
 Directory.Delete(raiz, true);

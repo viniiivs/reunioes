@@ -163,6 +163,11 @@ body { display: flex; flex-direction: column; overflow: hidden; }
 .campo { display: grid; gap: 6px; max-width: 560px; }
 .campo > span { font-size: 13px; font-weight: 600; }
 .campo small { color: var(--muted); font-size: 12px; }
+.teste-audio { display: flex; align-items: center; gap: 12px; }
+.teste-audio .barra { flex: 1; min-width: 0; }
+.teste-audio .btn { width: 120px; }   /* mesma largura nos dois botões e em "Testar" -> "Gravando 5" -> "Ouvindo": os medidores terminam alinhados */
+.teste-audio .btn.gravando i { color: var(--danger); }
+.teste-audio .btn[aria-disabled="true"] { cursor: default; }
 .campo input, .campo select, .campo textarea {
   width: 100%; min-height: 32px; padding: 6px 10px;
   border: 1px solid var(--line); border-radius: var(--r);
@@ -189,5 +194,7 @@ body { display: flex; flex-direction: column; overflow: hidden; }
 .barra { display: block; height: 4px; border-radius: 2px; background: var(--surface-2); overflow: hidden; }
 .barra i { display: block; height: 100%; background: var(--accent); transform-origin: left; transition: transform 300ms ease; }
 .barra.indeterminada i { width: 30%; animation: vai 1.2s ease-in-out infinite; }
+/* Variante medidor (teste de áudio): nível ao vivo, sem transição, começa vazio. */
+.barra.medidor i { transform: scaleX(0); transition: none; }
 @keyframes vai { from { transform: translateX(-100%); } to { transform: translateX(340%); } }
 @media (prefers-reduced-motion: reduce) { .barra.indeterminada i { animation: none; width: 100%; opacity: 0.4; } }

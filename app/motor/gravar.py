@@ -71,9 +71,34 @@ class Canal:
             self.arq.write(np.zeros(z, dtype=np.int16))
             self.escrito += z
 
+    def vivo(self):
+        try:
+            return self.stream.is_active()
+        except Exception:  # noqa: BLE001
+            return False
+
+    def reabrir(self, p, info):
+        """Dispositivo caiu (fone desconectado, Bluetooth trocando de perfil): tenta abrir de novo.
+        Enquanto nao volta, bombear() completa com silencio e o arquivo segue no tempo certo."""
+        try:
+            self.stream.close()
+        except Exception:  # noqa: BLE001
+            pass
+        try:
+            self.stream = p.open(format=pa.paInt16, channels=self.canais, rate=self.taxa,
+                                 input=True, input_device_index=info["index"],
+                                 frames_per_buffer=self.taxa // 20, stream_callback=self._cb)
+            return True
+        except Exception:  # noqa: BLE001
+            return False
+
     def fechar(self):
-        self.stream.stop_stream()
-        self.stream.close()
+        # dispositivo que caiu pode dar erro ao parar: o arquivo fecha de qualquer jeito
+        for f in (self.stream.stop_stream, self.stream.close):
+            try:
+                f()
+            except Exception:  # noqa: BLE001
+                pass
         self.bombear(self.escrito / self.taxa)
         self.arq.close()
 
@@ -138,6 +163,14 @@ def achar_ou_padrao(lista, trecho, padrao):
         return padrao
 
 
+def dizer(texto):
+    """Aviso no log. Falha ao escrever (log cheio, saida fechada) nunca pode derrubar a gravacao."""
+    try:
+        print(texto, flush=True)
+    except Exception:  # noqa: BLE001
+        pass
+
+
 def sha256(caminho):
     h = hashlib.sha256()
     with open(caminho, "rb") as f:
@@ -154,7 +187,10 @@ def main():
     ap.add_argument("--duracao", type=float, help="para sozinho apos N segundos")
     ap.add_argument("--listar", action="store_true")
     a = ap.parse_args()
-    comum.utf8_stdout()
+    if os.environ.get("REUNIOES_LOG"):
+        comum.log_proprio()   # o app passa o log: a gravacao segue mesmo se o app fechar
+    else:
+        comum.utf8_stdout()
     cfg = comum.config()
 
     p = pa.PyAudio()
@@ -189,13 +225,14 @@ def main():
     if os.path.exists(arq_eu):
         raise SystemExit(f"[erro] ja existe: {arq_eu}")
 
-    print(f"[mic]   {mic['name']}\n[saida] {loop['name']}\n[grava] {base}.*.flac")
+    dizer(f"[mic]   {mic['name']}\n[saida] {loop['name']}\n[grava] {base}.*.flac")
     canais = [Canal(p, mic, arq_eu), Canal(p, loop, arq_outros)]
     apps = MonitorApps()
     apps.start()
     inicio = dt.datetime.now().astimezone()
     t0 = time.monotonic()
-    print(f"[inicio] {inicio.isoformat(timespec='seconds')}  --  Ctrl+C para parar\n")
+    dizer(f"[inicio] {inicio.isoformat(timespec='seconds')}  --  Ctrl+C para parar\n")
+    infos, caidos, conferido = (mic, loop), [False, False], 0.0
     try:
         while True:
             time.sleep(0.1)
@@ -204,10 +241,21 @@ def main():
                 c.bombear(dec)
             if (a.duracao and dec >= a.duracao) or os.path.exists(base + ".parar"):
                 break
+            if dec - conferido >= 2:   # dispositivo que caiu: avisa e tenta de novo a cada 2 s
+                conferido = dec
+                for i, (n, c) in enumerate(zip(("eu", "outros"), canais)):
+                    if c.vivo():
+                        continue
+                    if not caidos[i]:
+                        dizer(f"[aviso] {n}: {infos[i]['name']} parou de mandar audio; tentando de novo")
+                    caidos[i] = True
+                    if c.reabrir(p, infos[i]) and c.vivo():
+                        dizer(f"[aviso] {n}: voltou")
+                        caidos[i] = False
             s = int(dec)
             if s % 10 == 0 and int(dec - 0.1) != s:  # a cada 10 s: tempo + pico de cada canal
                 niveis = "  ".join(f"{n}={c.pico * 100 // 32767}%" for n, c in zip(("eu", "outros"), canais))
-                print(f"  {s // 3600:02d}:{s % 3600 // 60:02d}:{s % 60:02d}  {niveis}", flush=True)
+                dizer(f"  {s // 3600:02d}:{s % 3600 // 60:02d}:{s % 60:02d}  {niveis}")
                 for c in canais:
                     c.pico = 0
     except KeyboardInterrupt:
@@ -225,7 +273,7 @@ def main():
         f.write(f"# mic: {mic['name']} | saida: {loop['name']}\n")
         for arq in (arq_eu, arq_outros):
             f.write(f"{sha256(arq)}  {os.path.basename(arq)}\n")
-    print(f"\n[pronto] {base}.eu.flac / .outros.flac / .sha256")
+    dizer(f"\n[pronto] {base}.eu.flac / .outros.flac / .sha256")
 
 
 if __name__ == "__main__":

@@ -126,7 +126,8 @@ public static class Sistema
         List<Dispositivo> Listar(DataFlow f)
         {
             string? pad = null;
-            try { pad = e.GetDefaultAudioEndpoint(f, Role.Communications).FriendlyName; } catch (Exception) { }
+            // Multimedia: o padrão que o gravador (PortAudio/WASAPI) usa; Communications pode ser outro aparelho
+            try { pad = e.GetDefaultAudioEndpoint(f, Role.Multimedia).FriendlyName; } catch (Exception) { }
             return e.EnumerateAudioEndPoints(f, DeviceState.Active).Select(d => new Dispositivo(d.FriendlyName, d.FriendlyName == pad)).ToList();
         }
         return new { mics = Listar(DataFlow.Capture), saidas = Listar(DataFlow.Render) };

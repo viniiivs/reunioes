@@ -81,6 +81,7 @@
   .voltar-secoes:hover { background: var(--hover); }
   .conteudo { padding: 16px 16px 32px; }
   .campo { grid-template-columns: 1fr !important; row-gap: 6px; }
+  .campo > .teste-audio { grid-column: 1; }
   .opcoes { grid-template-columns: 1fr; }
   .rodape { padding: 10px 16px; }
 }

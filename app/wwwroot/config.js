@@ -129,22 +129,66 @@ function lTranscricao() {
   if (t) tokenNovo = t;
 }
 
+// Teste de áudio (como o do Skype): nível ao vivo do microfone e da saída, gravar 5 s e ouvir de volta,
+// som de teste. O host só mede enquanto a tela pede (de 1 em 1 s); fechou a seção, ele solta os aparelhos.
+const BOTAO_MIC = `<i class="ph ph-microphone" aria-hidden="true"></i><span>Testar</span>`;
+const BOTAO_SOM = `<i class="ph ph-speaker-high" aria-hidden="true"></i><span>Tocar som</span>`;
+
 function rAudio() {
-  const sel = (id, rot, lista, atual, ajuda) => `
+  const sel = (id, rot, lista, atual, ajuda, teste) => `
     <label class="campo"><span>${rot}</span>
       <select id="${id}">
         <option value="">Padrão do Windows${(() => { const p = lista.find((d) => d.padrao); return p ? ` (agora: ${esc(p.nome)})` : ""; })()}</option>
         ${lista.map((d) => `<option value="${esc(d.nome)}" ${atual === d.nome ? "selected" : ""}>${esc(d.nome)}</option>`).join("")}
         ${atual && !lista.some((d) => d.nome === atual) ? `<option value="${esc(atual)}" selected>${esc(atual)} (desconectado)</option>` : ""}
-      </select><small>${ajuda}</small>
+      </select>
+      ${teste}
+      <small>${ajuda}</small>
     </label>`;
   return `
     <h2>Áudio</h2>
     <p class="lead">Grava duas faixas: o seu microfone e o que sai no seu fone ou caixa de som (a voz dos outros).</p>
     <div class="pilha">
-      ${sel("mic", "Microfone", dev.mics, cfg.mic, "A sua voz.")}
-      ${sel("saida", "Saída de som", dev.saidas, cfg.saida, "Onde você ouve a reunião. “Padrão do Windows” acompanha quando você troca de fone.")}
+      ${sel("mic", "Microfone", dev.mics, cfg.mic, "A sua voz.", `<div class="teste-audio">
+        <span class="barra medidor" id="nivel-mic" role="meter" aria-label="Nível do microfone" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"><i></i></span>
+        <button type="button" class="btn" id="testarMic">${BOTAO_MIC}</button></div>`)}
+      ${sel("saida", "Saída de som", dev.saidas, cfg.saida, "Onde você ouve a reunião. “Padrão do Windows” acompanha quando você troca de fone.", `<div class="teste-audio">
+        <span class="barra medidor" id="nivel-saida" role="meter" aria-label="Nível da saída de som" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"><i></i></span>
+        <button type="button" class="btn" id="somTeste">${BOTAO_SOM}</button></div>`)}
     </div>`;
+}
+
+const mostrado = { mic: 0, saida: 0 };
+function medirAudio() {
+  if (naWeb || !$("#nivel-mic")) return;
+  chamar("medirAudio", { mic: $("#mic").value || null, saida: $("#saida").value || null }).then((r) => {
+    const bm = $("#testarMic"), bs = $("#somTeste");
+    if (bm && !bm.dataset.etapa) bm.disabled = !r.mic || !r.saida;
+    if (bs && !bs.dataset.tocando) bs.disabled = !r.saida;
+  }).catch(() => {});
+}
+if (!naWeb) setInterval(medirAudio, 1000);
+
+// pico 0–1 -> barra em escala de decibéis (-54 dB a 0), que é como o ouvido percebe; cai devagar como os medidores de verdade
+function mostrarNivel(qual, pico) {
+  const el = $(`#nivel-${qual}`);
+  if (!el) return;
+  const alvo = pico ? Math.max(0, Math.min(1, (20 * Math.log10(pico) + 54) / 54)) : 0;
+  mostrado[qual] = Math.max(alvo, mostrado[qual] - 0.04);
+  el.firstElementChild.style.transform = `scaleX(${mostrado[qual].toFixed(3)})`;
+  el.setAttribute("aria-valuenow", Math.round(mostrado[qual] * 100));
+}
+
+function etapaTeste(m) {
+  const b = $("#testarMic");
+  if (!b) return;
+  // durante o teste o botão continua com cara de ativo (mostra o que está acontecendo), só não aceita clique
+  if (m.etapa === "fim") { delete b.dataset.etapa; b.removeAttribute("aria-disabled"); b.classList.remove("gravando"); b.innerHTML = BOTAO_MIC; return; }
+  b.dataset.etapa = m.etapa; b.setAttribute("aria-disabled", "true");
+  b.classList.toggle("gravando", m.etapa === "gravando");
+  b.innerHTML = m.etapa === "gravando"
+    ? `<i class="ph ph-record" aria-hidden="true"></i><span>Gravando ${m.resta}</span>`
+    : `<i class="ph ph-speaker-high" aria-hidden="true"></i><span>Ouvindo</span>`;
 }
 function lAudio() { cfg.mic = $("#mic").value || null; cfg.saida = $("#saida").value || null; }
 
@@ -364,6 +408,10 @@ aoMudar((m) => {
   } else if (m.evento === "atualizacao") {
     desenharAtualizacao(m.status);
     if (SETUP) desenharRodape();
+  } else if (m.evento === "niveis") {
+    mostrarNivel("mic", m.mic); mostrarNivel("saida", m.saida);
+  } else if (m.evento === "testeAudio") {
+    etapaTeste(m);
   }
 });
 
@@ -506,6 +554,7 @@ conteudo.addEventListener("input", marcarSujo);
 conteudo.addEventListener("change", (e) => {
   marcarSujo();
   if (e.target.id === "pastaMotor" || e.target.id === "pastaGravacoes") espaco(e.target.id);
+  if (e.target.id === "mic" || e.target.id === "saida") medirAudio();
 });
 
 conteudo.addEventListener("click", async (e) => {
@@ -539,6 +588,22 @@ conteudo.addEventListener("click", async (e) => {
   if (t.closest("#checarClaude")) {
     sis = await chamar("sistema"); desenharSecao("resumo");
     if (!temIa()) avisar(sis.claudeDesktop ? "Achei o app Claude, mas não o Claude Code." : "Não achei o Claude Code nem o Codex neste computador.");
+    return;
+  }
+  if (t.closest("#testarMic")) {
+    e.preventDefault();
+    if (t.closest("#testarMic").dataset.etapa) return;
+    try { await chamar("testarMicrofone"); } catch (er) { avisar(er.message); etapaTeste({ etapa: "fim" }); }
+    return;
+  }
+  if (t.closest("#somTeste")) {
+    e.preventDefault();
+    const b = t.closest("#somTeste");
+    if (b.dataset.tocando) return;
+    b.dataset.tocando = "1"; b.setAttribute("aria-disabled", "true");
+    b.innerHTML = `<i class="ph ph-speaker-high" aria-hidden="true"></i><span>Tocando</span>`;
+    try { await chamar("somDeTeste"); } catch (er) { avisar(er.message); }
+    delete b.dataset.tocando; b.removeAttribute("aria-disabled"); b.innerHTML = BOTAO_SOM;
     return;
   }
   if (t.closest("#permitirMic")) {
