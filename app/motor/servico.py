@@ -293,14 +293,26 @@ class Servico:
             else:
                 log.info("atalho: gravando %s", os.path.basename(iniciar()))
 
+    def largar(self, motivo):
+        """A gravacao que o servico comecou deixa de parar sozinha."""
+        if self.minha:
+            log.info("%s: %s continua ate parar no botao ou no atalho", motivo, os.path.basename(self.minha))
+            self.minha = self.sumiu_desde = None
+
     def passo(self):
         self.parando_em = None
-        if not comum.config()["gravarSozinho"]:
+        cfg = comum.config()
+        ignorar = frozenset(cfg.get("gravarSozinhoSem") or [])
+        if not cfg["gravarSozinho"]:
+            # desligado vale para comecar e para parar: a gravacao em curso vira manual (para no botao ou no atalho)
             self.visto_desde = None
+            self.largar("gravar sozinho desligado")
             return None
         agora = time.monotonic()
         with self.trava:
             rodando = gravando()
+            if self.minha and plataforma(self.minha_app) in ignorar:
+                self.largar(f"{self.minha_app} fora da gravacao automatica")
             if self.minha:
                 # Gravando por conta propria: so para quando o app que comecou sai da chamada.
                 if not rodando:
@@ -325,7 +337,7 @@ class Servico:
                 if ainda_na_chamada(self.suprimido):
                     return None
                 self.suprimido = None
-            app, exe = em_reuniao(frozenset(comum.config().get("gravarSozinhoSem") or []))
+            app, exe = em_reuniao(ignorar)
             if not app:
                 self.visto_desde = None
                 return None
