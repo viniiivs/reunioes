@@ -59,6 +59,7 @@ O que só o app de Windows faz: gravar sozinho quando a reunião começa, atalho
 
 ## Novidades
 
+- **1.0.25** (10/11/2026): a gravação automática do Discord não se divide mais em um arquivo por fala: ela espera 3 minutos de silêncio, em vez de 45 segundos, antes de considerar que a chamada acabou.
 - **1.0.24** (10/11/2026): resumo e addons também com o ChatGPT (Codex, conta Plus ou superior), escolha de em quais apps gravar sozinho (ex.: deixar o Discord de fora) e o app acha o Claude Code instalado pelo npm ou winget sem reiniciar.
 - **1.0.23** (10/11/2026): se a instalação do motor der erro durante a configuração, o app procura uma versão nova e oferece atualizar e continuar de onde parou.
 - **1.0.22** (10/11/2026): a instalação não quebra mais ao baixar os modelos em PCs sem permissão para links simbólicos (erro 1314), e "Tentar de novo" mostra a etapa certa.

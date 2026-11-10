@@ -7,7 +7,7 @@
    chamada; navegador captura para muita coisa, entao so conta se alguma janela dele tiver
    o nome do servico de reuniao no titulo.
      - comeca: app de reuniao capturando por >= INICIO s e nenhuma gravacao rodando
-     - para:   o app soltou o mic por >= FIM s (so a gravacao que o servico comecou)
+     - para:   o app soltou o mic por >= FIM s (Discord: 180 s; so a gravacao que o servico comecou)
      - se a gravacao automatica for parada na mao, nao religa ate o app soltar o mic
 2. Atalho global (padrao Ctrl+Alt+G): grava / para, de qualquer lugar.
 
@@ -42,6 +42,9 @@ PYTHON = os.path.join(os.path.dirname(sys.executable), "python.exe")  # gravar.p
 PASSO = 3
 INICIO = 10
 FIM = 45
+# O Discord solta o microfone quando a pessoa para de falar (comum com "pressionar para falar") e
+# so toca som quando alguem fala: com 45 s, uma conversa com pausas virava um arquivo por fala.
+FIM_POR_APP = {"discord": 180}
 
 APPS = {
     "ms-teams.exe": "Teams", "teams.exe": "Teams", "msteams.exe": "Teams",
@@ -58,6 +61,7 @@ for par in filter(None, os.environ.get("REUNIOES_EXTRA", "").split(";")):
     APPS[exe.lower()] = nome or exe
 if os.environ.get("REUNIOES_TEMPOS"):
     INICIO, FIM = (int(x) for x in os.environ["REUNIOES_TEMPOS"].split(","))
+    FIM_POR_APP = {}
 
 log = logging.getLogger("servico")
 user32 = ctypes.windll.user32
@@ -124,6 +128,11 @@ def plataforma(nome):
     """"Teams", "Microsoft Teams", "Meet", "Discord"... -> id usado em gravarSozinhoSem."""
     n = nome.lower()
     return "teams" if "teams" in n else n.split()[0]
+
+
+def fim_de(app):
+    """Segundos sem microfone nem som do app ate considerar que a chamada acabou."""
+    return FIM_POR_APP.get(plataforma(app), FIM)
 
 
 def titulo_de_reuniao(exe, titulos=None, ignorar=frozenset()):
@@ -302,11 +311,11 @@ class Servico:
                 else:
                     if self.sumiu_desde is None:
                         self.sumiu_desde = agora
-                    falta = FIM - (agora - self.sumiu_desde)
+                    falta = fim_de(self.minha_app) - (agora - self.sumiu_desde)
                     if falta > 0:
                         self.parando_em = int(falta + 0.5)
                     else:
-                        log.info("%s saiu da chamada ha %ss: parando %s", self.minha_app, FIM, os.path.basename(self.minha))
+                        log.info("%s saiu da chamada ha %ss: parando %s", self.minha_app, fim_de(self.minha_app), os.path.basename(self.minha))
                         open(self.minha + ".parar", "w").close()
                         winsound.Beep(660, 200); winsound.Beep(440, 300)
                         self.minha = self.sumiu_desde = None
