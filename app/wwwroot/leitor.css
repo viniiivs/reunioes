@@ -218,3 +218,4 @@ mark { background: var(--accent-soft); color: inherit; border-radius: 3px; box-s
 .trecho-addon { padding: 12px 0; border-top: 1px solid var(--line); }
 .trecho-addon:first-of-type { border-top: 0; padding-top: 0; }
 .md > :last-child { margin-bottom: 0; }
+.md li > ul, .md li > ol { margin: 4px 0 0; }
