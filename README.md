@@ -18,12 +18,12 @@ Grava suas reuniões, transcreve no seu próprio computador e diz o que ficou pa
 - **Mostra o andamento** da transcrição em porcentagem na lista. Dá para pausar e retomar sem perder o que já foi feito, passar uma reunião para o começo da fila e fechar o app no meio: a transcrição continua.
 - **Separa as vozes** de cada pessoa (opcional) e aprende os nomes: dê nome a "Falante 1" uma vez e ele reconhece nas próximas reuniões.
 - **Resumo com IA** (opcional, com o [Claude Code](https://claude.com/product/claude-code)): lista as tarefas que são suas, com o trecho da reunião que comprova cada uma. Marque as tarefas como feitas e copie o resumo com um clique.
-- **Fato ou fake** (opcional, também com o Claude Code): confere na web o que foi dito na reunião (números, datas, leis, notícias) e mostra se é fato, fake ou impreciso, com uma frase de explicação e a fonte. Para checar só uma frase, selecione o trecho na transcrição.
+- **Addons**: cada pessoa pode instalar funções a mais, que aparecem como abas da reunião (ex.: ata, análise com o Claude, um script seu). Veja [Addons](#addons).
 - **Atualiza sozinho**: baixa versões novas em segundo plano e avisa quando é só reiniciar.
 
 ![Resumo de uma reunião](docs/resumo.png)
 
-![Fato ou fake](docs/checagem.png)
+![Um addon no leitor](docs/addon.png)
 
 ## Instalação
 
@@ -42,7 +42,7 @@ Grava suas reuniões, transcreve no seu próprio computador e diz o que ficou pa
 | Internet | só para instalar e para as atualizações; gravar e transcrever funcionam offline |
 | Placa de vídeo NVIDIA | opcional, deixa a transcrição muito mais rápida |
 | Separar vozes | opcional; precisa de uma conta grátis no [Hugging Face](https://huggingface.co) e aceitar os termos do modelo [pyannote community-1](https://huggingface.co/pyannote/speaker-diarization-community-1). O assistente explica |
-| Resumo com IA e Fato ou fake | opcionais; precisam do [Claude Code](https://claude.com/product/claude-code) instalado e com login |
+| Resumo com IA e addons do Claude | opcionais; precisam do [Claude Code](https://claude.com/product/claude-code) instalado e com login |
 
 ## Versão web
 
@@ -51,7 +51,7 @@ Em **[viniiivs.github.io/reunioes](https://viniiivs.github.io/reunioes/)**, com 
 - **Grava duas faixas**: o seu microfone e o som da aba (ou da tela) da reunião que você compartilhar. Marque "Compartilhar áudio" quando o navegador perguntar.
 - **Transcreve no navegador** com o Whisper ([Transformers.js](https://github.com/huggingface/transformers.js)), pela placa de vídeo (WebGPU) quando dá, ou pelo processador. O modelo é baixado uma vez (de 70 MB a 1,5 GB, conforme a qualidade) e o áudio não sai do computador.
 - **Importa arquivos**: arraste um áudio ou vídeo para a lista.
-- **Resumo com IA e Fato ou fake** (opcionais) com a sua chave da API da Anthropic, guardada só no navegador. A checagem usa a busca na web da API (cobrada à parte pela Anthropic, US$ 10 por mil buscas).
+- **Resumo com IA** (opcional) com a sua chave da API da Anthropic, guardada só no navegador. Addons só existem no app de Windows.
 - Gravações e transcrições ficam no próprio navegador; baixe o que quiser guardar.
 - Funciona offline depois do primeiro uso e pode ser instalada como app (ícone na barra de endereço).
 
@@ -59,6 +59,7 @@ O que só o app de Windows faz: gravar sozinho quando a reunião começa, atalho
 
 ## Novidades
 
+- **1.0.20** (10/11/2026): addons. Funções a mais que cada pessoa instala e que aparecem como abas da reunião, inclusive num trecho selecionado. O Fato ou fake saiu do app e virou um addon à parte; o Resumo continua embutido.
 - **1.0.19** (26/10/2026): a transcrição não trava mais quando a placa de vídeo fica sem memória no meio do caminho; ela percebe e continua num modo mais leve, ou no processador.
 - **1.0.18** (26/10/2026): transcrição muito mais rápida em placas com pouca memória livre; o app escolhe o modo que cabe na placa em vez de usar a memória do PC, que deixava tudo parado.
 - **1.0.17** (24/10/2026): a porcentagem se atualiza sozinha, fechar ou atualizar o app no meio não corta a transcrição, e o app não se atualiza durante uma.
@@ -66,11 +67,59 @@ O que só o app de Windows faz: gravar sozinho quando a reunião começa, atalho
 
 O app instalado se atualiza sozinho. Histórico completo em [Releases](https://github.com/viniiivs/reunioes/releases).
 
+## Addons
+
+Addons fazem algo a mais com uma reunião já transcrita, cada um numa aba própria do leitor, ao lado do Resumo. O app não traz nenhum: cada pessoa instala os que quiser, e eles só existem no computador dela. Para instalar, use **Configurações › Addons › Instalar addon** e escolha a pasta do addon. Também dá para copiar a pasta para `%APPDATA%\Reunioes\addons\`. O interruptor de cada addon esconde ou mostra a aba dele.
+
+Um addon é uma pasta (nome em minúsculas, números e hífen) com um `addon.json`. Ele pode ser de dois tipos.
+
+**`claude`**: manda a transcrição ao Claude Code com o prompt do addon. O Claude responde em markdown.
+
+```jsonc
+{
+  "nome": "Ata", "icone": "file-text", "descricao": "Ata formal da reunião.", "botao": "Gerar ata", "versao": "1.0",
+  "tipo": "claude",
+  "prompt": "prompt.md",          // prompt de sistema; {nome} vira o seu nome (Configurações › Resumo com IA)
+  "modelo": "sonnet",             // sonnet, opus, haiku...
+  "ferramentas": ["WebSearch"],   // opcional: ferramentas que o Claude pode usar
+  "prazoMinutos": 5
+}
+```
+
+**`comando`**: roda um programa, que pode ser em qualquer linguagem.
+
+```jsonc
+{
+  "nome": "Quem falou", "icone": "chart-bar", "botao": "Contar",
+  "tipo": "comando",
+  "comando": ["{python}", "falas.py"],   // {python} = o Python do motor do app; caminhos relativos à pasta do addon
+  "prazoMinutos": 1
+}
+```
+
+O programa funciona assim:
+- **Entrada:** recebe a reunião em JSON pela entrada padrão, com os campos `base`, `data`, `nome`, `transcricao`, `pasta` e `prefixo` (o caminho dos arquivos da gravação sem a extensão).
+- **Saída:** devolve markdown pela saída padrão.
+- **Erros:** se o programa sair com código diferente de zero, as últimas linhas do stderr aparecem como erro na aba.
+
+Com `"botaoTrecho": "Checar trecho"` no `addon.json`, o addon também roda num trecho: ao selecionar um texto na transcrição, aparece um botão com esse nome. Com isso:
+- no tipo claude, a mensagem diz "Rode só neste trecho" e manda a transcrição só como contexto;
+- no tipo comando, a entrada ganha o campo `trecho` (`texto`, `quem`, `tempo`);
+- o resultado de cada trecho fica no topo da aba, acima do resultado da reunião.
+
+O resultado é guardado junto da gravação, em `<gravação>.addon.<id>.json`. O markdown aceita:
+- carimbos `[hh:mm:ss]`, que viram links para o trecho da transcrição;
+- selos `[[ok: Fato]]`, `[[erro: Fake]]`, `[[alerta: Impreciso]]` e `[[neutro: Sem dados]]`;
+- tabelas, listas de tarefas (`- [ ]`) e links `https`. O ícone é o nome de um [Phosphor Icon](https://phosphoricons.com).
+
+Há dois exemplos em [`exemplos/addons`](exemplos/addons): `ata`, do tipo claude, e `falas`, do tipo comando.
+
 ## Privacidade
 
 Gravação e transcrição acontecem no seu computador. Só sai daqui:
 - o download dos modelos e das atualizações;
-- o texto da transcrição, enviado ao Claude, se você ligar o resumo com IA ou pedir uma checagem (Fato ou fake); na checagem o Claude também pesquisa na web as afirmações escolhidas.
+- o texto da transcrição, enviado ao Claude, se você ligar o resumo com IA ou rodar um addon do tipo claude (o addon pode deixar o Claude pesquisar na web);
+- o que um addon do tipo comando fizer: ele é um programa que você instalou.
 
 Grave reuniões só com o conhecimento das pessoas e respeitando as leis do seu país.
 

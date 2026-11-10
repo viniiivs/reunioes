@@ -82,7 +82,30 @@ public static class Nucleo
             case "excluir": Gravacoes.Excluir(b!); return null;
             case "ler": return await Task.Run(() => Gravacoes.Ler(b!));
             case "resumir": Gravacoes.Resumir(b!); return null;
-            case "checar": Gravacoes.Checar(b!, a["trecho"]?.GetValue<string>(), a["quem"]?.GetValue<string>(), a["tempo"]?.GetValue<string>()); return null;
+            case "rodarAddon":
+                Gravacoes.RodarAddon(b!, a["id"]!.GetValue<string>(), a["trecho"]?.GetValue<string>() is { } tr
+                    ? new Trecho(tr, a["quem"]?.GetValue<string>(), a["tempo"]?.GetValue<string>()) : null);
+                return null;
+
+            // addons (Configuracoes)
+            case "addons":
+                return await Task.Run(() => Addons.Listar().Select(x => new
+                {
+                    x.Id, x.Nome, x.Icone, x.Descricao, x.Versao, x.Tipo, x.Erro, ligado = !Config.AddonsDesligados.Contains(x.Id),
+                }).ToArray());
+            case "pastaAddons":
+                Directory.CreateDirectory(Addons.Dir);
+                return Abrir(new[] { "explorer.exe", $"\"{Addons.Dir}\"" });
+            case "instalarAddon":
+            {
+                var pasta = janela.EscolherPasta(null, "Escolha a pasta do addon");
+                if (pasta == null) return null;
+                var id = await Task.Run(() => Addons.Instalar(pasta));
+                var c = Config;
+                if (c.AddonsDesligados.Remove(id)) c.Salvar();
+                Emitir(new { evento = "mudou" });
+                return id;
+            }
             case "nomear": await Gravacoes.Nomear(b!, a["de"]!.GetValue<string>(), a["para"]!.GetValue<string>()); return null;
             case "gravar": await Task.Run(Gravacoes.GravarOuParar); return null;
             case "abrirArquivo": return Abrir(Gravacoes.Arquivo(b!, a["ext"]!.GetValue<string>()));

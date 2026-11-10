@@ -384,16 +384,10 @@ public sealed partial class Gravacoes
         try { if (File.Exists(rj)) resumo = JsonNode.Parse(LerCompartilhado(rj)); }
         catch (Exception) { }   // resumo corrompido nao pode impedir de ler a transcricao
         var nome = cfg().Resumo.Nome?.Trim();
-        var cj = Caminho(b, "checagem.json");
-        JsonNode? checagem = null;
-        try { if (File.Exists(cj)) checagem = JsonNode.Parse(LerCompartilhado(cj)); }
-        catch (Exception) { }
-        var ce = Caminho(b, "checagem.erro");
         return new
         {
             texto = LerCompartilhado(md), gravacao = g, resumo, resumoAtivo = cfg().Resumo.Ativo, nome = string.IsNullOrEmpty(nome) ? null : nome,
-            checagem, checando = Checando(b), checagemErro = File.Exists(ce) ? LerCompartilhado(ce) : null,
-            podeChecar = Sistema.Claude() != null,
+            addons = AddonsDe(b),
         };
     }
 

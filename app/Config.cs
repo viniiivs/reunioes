@@ -22,6 +22,8 @@ public sealed class Config
     public bool IniciarComWindows { get; set; } = true;
     public bool AtualizarSozinho { get; set; } = true;
     public ResumoConfig Resumo { get; set; } = new();
+    /// <summary>Ids dos addons instalados que nao devem aparecer (instalar ja liga).</summary>
+    public List<string> AddonsDesligados { get; set; } = new();
     /// <summary>Token do Hugging Face cifrado com DPAPI (so este usuario neste PC decifra).</summary>
     public string? HfTokenCifrado { get; set; }
     public bool ConfiguracaoConcluida { get; set; }

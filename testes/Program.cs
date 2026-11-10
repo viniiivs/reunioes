@@ -103,6 +103,80 @@ Checar(logMotor.Contains("[pct] 70") && logMotor.Contains("acentuação") && log
 Checar(!g.TranscrevendoAgora(), "depois de terminar, nao esta transcrevendo");
 Checar(avisos > 0, $"avisou a tela durante a transcricao ({avisos}x)");
 
+// ---------------------------------------------------------------- addons
+// Pasta de addons temporaria (nunca a do usuario). O de comando roda de verdade; o do Claude so
+// com REUNIOES_TESTE_CLAUDE=1 (uma chamada curta ao haiku).
+Addons.Dir = Path.Combine(raiz, "addons");
+var exemplos = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "..", "exemplos", "addons"));
+Checar(Addons.Listar().Count == 0, "sem pasta de addons: nenhum addon");
+Checar(Addons.Instalar(Path.Combine(exemplos, "falas")) == "falas" && Addons.Instalar(Path.Combine(exemplos, "ata")) == "ata", "instala os 2 exemplos");
+void NovoAddon(string id, string json, params (string, string)[] arquivos)
+{
+    Directory.CreateDirectory(Path.Combine(Addons.Dir, id));
+    File.WriteAllText(Path.Combine(Addons.Dir, id, "addon.json"), json);
+    foreach (var (n, c) in arquivos) File.WriteAllText(Path.Combine(Addons.Dir, id, n), c);
+}
+NovoAddon("sem-prompt", """{ "nome": "Sem prompt", "tipo": "claude" }""");
+NovoAddon("fuga", """{ "nome": "Fuga", "tipo": "claude", "prompt": "..\\..\\config-teste.json" }""");
+NovoAddon("Maiusculo", """{ "nome": "X", "tipo": "comando", "comando": ["a"] }""");
+NovoAddon("falha", """{ "nome": "Falha", "tipo": "comando", "comando": ["{python}", "-c", "import sys; print('deu ruim', file=sys.stderr); sys.exit(3)"] }""");
+var todos = Addons.Listar();
+Checar(todos.First(a => a.Id == "falas").Erro == null && todos.First(a => a.Id == "ata").Erro == null, "exemplos validos");
+Checar(todos.First(a => a.Id == "sem-prompt").Erro?.Contains("prompt") == true, "addon sem prompt.md aparece com erro");
+Checar(todos.First(a => a.Id == "fuga").Erro != null, "prompt fora da pasta do addon e recusado");
+Checar(todos.First(a => a.Id == "Maiusculo").Erro?.Contains("Nome da pasta") == true, "id invalido aparece com erro");
+
+var ba = "2026-10-14_17-08_rec";
+File.WriteAllText(Path.Combine(raiz, ba, $"{ba}.transcricao.md"),
+    "**[00:00:01] Eu:** bom dia a todos\n\n**[00:00:05] Ana:** bom dia, vamos falar da proposta nova hoje\n\n**[00:00:12] Eu:** pode ser\n");
+System.Text.Json.Nodes.JsonNode AddonLido(string id) =>
+    System.Text.Json.Nodes.JsonNode.Parse(System.Text.Json.JsonSerializer.Serialize(g.Ler(ba)))!["addons"]!.AsArray().First(x => x!["id"]!.ToString() == id)!;
+void Esperar(string id) { for (int i = 0; i < 480 && AddonLido(id)["rodando"]!.GetValue<bool>(); i++) Thread.Sleep(250); }
+
+g.RodarAddon(ba, "falas");
+bool repetiu = false;
+try { g.RodarAddon(ba, "falas"); } catch (InvalidOperationException) { repetiu = true; }
+Checar(repetiu, "nao roda o mesmo addon duas vezes ao mesmo tempo na mesma reuniao");
+Esperar("falas");
+var mdFalas = AddonLido("falas")["resultado"]?["markdown"]?.ToString() ?? "";
+Checar(mdFalas.Contains("| Ana | 1 | 8 |") && mdFalas.Contains("| Eu | 2 | 6 |") && mdFalas.Contains("[00:00:05]"), $"addon de comando devolve o markdown (tabela por pessoa)\n{mdFalas}");
+Checar(File.Exists(Path.Combine(raiz, ba, $"{ba}.addon.falas.json")), "resultado fica junto da gravacao");
+
+g.RodarAddon(ba, "falha");
+Esperar("falha");
+Checar(AddonLido("falha")["erro"]?.ToString() == "deu ruim", $"erro do programa vira a mensagem da aba ({AddonLido("falha")["erro"]})");
+
+NovoAddon("trecho", """{ "nome": "Trecho", "tipo": "comando", "botaoTrecho": "Ver trecho", "comando": ["{python}", "t.py"] }""",
+    ("t.py", "import json,sys; d=json.load(sys.stdin); t=d['trecho']; print('trecho: ' + t['texto'] + ' / ' + str(t['quem']) if t else 'reuniao inteira')"));
+g.RodarAddon(ba, "trecho"); Esperar("trecho");
+g.RodarAddon(ba, "trecho", new Trecho("proposta nova", "Ana", "00:00:05")); Esperar("trecho");
+var rt = AddonLido("trecho")["resultado"]!;
+Checar(rt["markdown"]?.ToString() == "reuniao inteira" && rt["trechos"]!.AsArray().Count == 1 && rt["trechos"]![0]!["markdown"]!.ToString() == "trecho: proposta nova / Ana"
+    && rt["trechos"]![0]!["tempo"]!.ToString() == "00:00:05", "trecho soma em trechos e mantem o resultado da reuniao");
+g.RodarAddon(ba, "trecho"); Esperar("trecho");
+Checar(AddonLido("trecho")["resultado"]!["trechos"]!.AsArray().Count == 1, "rodar na reuniao de novo mantem os trechos");
+bool semTrecho = false;
+try { g.RodarAddon(ba, "falas", new Trecho("x x x x x x x x", null, null)); } catch (InvalidOperationException) { semTrecho = true; }
+Checar(semTrecho, "addon sem botaoTrecho recusa trecho");
+
+cfg.AddonsDesligados = ["falas"];
+var idsLidos = System.Text.Json.Nodes.JsonNode.Parse(System.Text.Json.JsonSerializer.Serialize(g.Ler(ba)))!["addons"]!.AsArray().Select(x => x!["id"]!.ToString()).ToList();
+Checar(!idsLidos.Contains("falas") && idsLidos.Contains("ata") && !idsLidos.Contains("sem-prompt"), $"leitor recebe so os ligados e validos ({string.Join(",", idsLidos)})");
+bool recusou = false;
+try { g.RodarAddon(ba, "falas"); } catch (InvalidOperationException) { recusou = true; }
+Checar(recusou, "addon desligado nao roda");
+cfg.AddonsDesligados = [];
+
+if (Environment.GetEnvironmentVariable("REUNIOES_TESTE_CLAUDE") == "1")
+{
+    NovoAddon("eco", """{ "nome": "Eco", "tipo": "claude", "modelo": "haiku", "prazoMinutos": 2 }""",
+        ("prompt.md", "Responda exatamente com duas linhas: '## Eco' e depois o nome de quem falou primeiro seguido do carimbo [hh:mm:ss] da fala. {nome} e o dono do app."));
+    g.RodarAddon(ba, "eco");
+    Esperar("eco");
+    var eco = AddonLido("eco");
+    Checar(eco["resultado"]?["markdown"]?.ToString().Contains("## Eco") == true, $"addon do Claude devolve markdown ({eco["resultado"]?["markdown"] ?? eco["erro"]})");
+}
+
 Console.WriteLine(falhas == 0 ? "\nTUDO OK" : $"\n{falhas} FALHA(S)");
 foreach (var a in Directory.GetFiles(raiz, "*", SearchOption.AllDirectories)) File.SetAttributes(a, FileAttributes.Normal);
 Directory.Delete(raiz, true);

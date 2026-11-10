@@ -1,0 +1,13 @@
+{
+  // Exemplo de addon que manda a transcrição ao Claude com o prompt.md desta pasta.
+  "nome": "Ata",
+  "icone": "file-text",
+  "descricao": "Ata formal com participantes, decisões e pendências.",
+  "botao": "Gerar ata",
+  "versao": "1.0",
+  "tipo": "claude",
+  "prompt": "prompt.md",
+  "modelo": "sonnet",
+  "ferramentas": [],
+  "prazoMinutos": 5
+}

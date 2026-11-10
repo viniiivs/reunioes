@@ -1,0 +1,12 @@
+{
+  // Exemplo de addon que roda um programa: recebe a reunião em JSON pela entrada padrão
+  // e devolve markdown pela saída padrão. "{python}" é o Python do motor do app.
+  "nome": "Quem falou",
+  "icone": "chart-bar",
+  "descricao": "Quanto cada pessoa falou na reunião.",
+  "botao": "Contar",
+  "versao": "1.0",
+  "tipo": "comando",
+  "comando": ["{python}", "falas.py"],
+  "prazoMinutos": 1
+}

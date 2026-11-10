@@ -114,7 +114,7 @@ body { display: flex; flex-direction: column; overflow: hidden; }
 .busca input::placeholder { color: var(--faint); }
 .busca input:focus { outline: none; border-color: var(--focus); box-shadow: 0 0 0 1px var(--focus); }
 
-/* ---- selo: rótulo curto em cápsula. Um só no app: "Recomendado" das opções e veredito do Fato ou fake ---- */
+/* ---- selo: rótulo curto em cápsula. Um só no app: "Recomendado" das opções e [[tom: texto]] no markdown dos addons ---- */
 .selo {
   display: inline-flex; align-items: center; justify-content: center; gap: 4px;
   height: 20px; padding: 0 8px; border-radius: 999px;
@@ -122,9 +122,9 @@ body { display: flex; flex-direction: column; overflow: hidden; }
   font: 700 11px/1 var(--font); white-space: nowrap;
 }
 .selo .ph { font-size: 13px; }
-.selo.fato { background: var(--ok-soft); color: var(--ok); }
-.selo.fake { background: var(--danger-soft); color: var(--danger-texto); }
-.selo.impreciso { background: var(--alerta-soft); color: var(--alerta); }
+.selo.ok { background: var(--ok-soft); color: var(--ok); }
+.selo.erro { background: var(--danger-soft); color: var(--danger-texto); }
+.selo.alerta { background: var(--alerta-soft); color: var(--alerta); }
 
 /* ---- aviso flutuante ---- */
 .aviso {
