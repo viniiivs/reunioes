@@ -81,6 +81,7 @@
   .voltar-secoes:hover { background: var(--hover); }
   .conteudo { padding: 16px 16px 32px; }
   .campo { grid-template-columns: 1fr !important; row-gap: 6px; }
+  .campo > .teste-audio { grid-column: 1; }
   .opcoes { grid-template-columns: 1fr; }
   .rodape { padding: 10px 16px; }
 }
@@ -96,4 +97,8 @@
   .voltar-lista span { display: none; }   /* só a seta, como no celular com título longo */
   .topo .ferramentas #copiar-resumo { font-size: 0; gap: 0; width: 34px; padding: 0; justify-content: center; }
   .topo .ferramentas #copiar-resumo .ph { font-size: 16px; }
+}
+/* celular: 3 colunas não cabem; 2, cada uma do tamanho do maior nome (encolhe só se faltar espaço) */
+@media (max-width: 480px) {
+  .grade-sw { grid-template-columns: repeat(2, minmax(0, max-content)); column-gap: 24px; }
 }

@@ -66,7 +66,7 @@ function desenhar() {
     linhas.innerHTML = `
       <div class="vazio">
         <h2>Nenhuma gravação ainda</h2>
-        <p>${naWeb ? "Clique em Gravar e escolha a aba ou a tela da reunião, marcando “Compartilhar áudio”. Ou arraste para cá um arquivo de áudio que já tenha." : `Clique em Gravar no topo${est?.atalho ? `, use ${est.atalho.split("+").map((k) => `<kbd>${f.esc(k.length === 1 ? k.toUpperCase() : k[0].toUpperCase() + k.slice(1))}</kbd>`).join(" ")}` : ""} ou entre numa chamada com “Gravar sozinho” ligado. As gravações aparecem aqui sozinhas.`}</p>
+        <p>${naWeb ? "Clique em Gravar e escolha a aba ou a tela da reunião, marcando “Compartilhar áudio”. Ou arraste para cá um arquivo de áudio que já tenha." : `Clique em Gravar no topo${est?.atalho ? `, use ${est.atalho.split("+").map((k) => `<kbd>${f.esc(k.length === 1 ? k.toUpperCase() : k[0].toUpperCase() + k.slice(1))}</kbd>`).join(" ")}` : ""} ou entre numa chamada com “Gravar automaticamente” ligado. As gravações aparecem aqui automaticamente.`}</p>
       </div>`;
     return;
   }
@@ -105,10 +105,10 @@ function linha(g, d) {
   return `
     <div class="linha${curta ? " curta" : ""}" data-base="${b}" role="row">
       <span class="cel data" title="${f.esc(f.dia(d))}">${f.esc(f.diaTabela(d))}</span>
-      <div class="quando" title="${f.esc(g.base)}${g.auto ? `\nGravada sozinha: ${f.esc(g.auto)} pegou o microfone` : ""}">
+      <div class="quando" title="${f.esc(g.base)}${g.auto ? `\nGravada automaticamente: ${f.esc(g.auto)} pegou o microfone` : ""}">
         <span class="hora">${f.hora(d)}</span>
         ${fim ? `<span class="ate">até ${f.hora(fim)}</span>` : ""}
-        ${g.auto ? `<i class="ph ph-lightning raio" aria-label="gravada sozinha"></i>` : ""}
+        ${g.auto ? `<i class="ph ph-lightning raio" aria-label="gravada automaticamente"></i>` : ""}
       </div>
       <span class="num cel">${g.duracao != null ? f.duracao(g.duracao) : `<span class="apagado">?</span>`}</span>
       <span class="num cel col-tam">${f.tamanho(g.bytes)}</span>

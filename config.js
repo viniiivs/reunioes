@@ -58,7 +58,7 @@ function rBoasVindas() {
     <ul class="recursos">
       <li><i class="ph ph-waveform"></i><div><b>Sua voz e a dos outros em faixas separadas</b><span>Grava o microfone e o som do computador ao mesmo tempo, sem perder qualidade.</span></div></li>
       <li><i class="ph ph-lock-simple"></i><div><b>Transcrição no seu computador</b><span>O áudio nunca sai da sua máquina. A IA de transcrição roda aqui mesmo.</span></div></li>
-      <li><i class="ph ph-lightning"></i><div><b>Grava sozinho quando a reunião começa</b><span>Percebe quando um app de chamada (Teams, Meet, Discord, Zoom...) usa o microfone.</span></div></li>
+      <li><i class="ph ph-lightning"></i><div><b>Grava automaticamente quando a reunião começa</b><span>Percebe quando um app de chamada (Teams, Meet, Discord, Zoom...) usa o microfone.</span></div></li>
       <li><i class="ph ph-sparkle"></i><div><b>Resumo com o que é seu</b><span>Opcional: a IA (Claude ou ChatGPT) lê a transcrição e lista as suas tarefas, com o trecho que comprova cada uma.</span></div></li>
     </ul>
     <p class="credito">Feito por Vinícius Vieira <span aria-hidden="true">·</span> <a data-link="${GITHUB}">github.com/viniiivs</a></p>`;
@@ -129,22 +129,66 @@ function lTranscricao() {
   if (t) tokenNovo = t;
 }
 
+// Teste de áudio (como o do Skype): nível ao vivo do microfone e da saída, gravar 5 s e ouvir de volta,
+// som de teste. O host só mede enquanto a tela pede (de 1 em 1 s); fechou a seção, ele solta os aparelhos.
+const BOTAO_MIC = `<i class="ph ph-microphone" aria-hidden="true"></i><span>Testar</span>`;
+const BOTAO_SOM = `<i class="ph ph-speaker-high" aria-hidden="true"></i><span>Tocar som</span>`;
+
 function rAudio() {
-  const sel = (id, rot, lista, atual, ajuda) => `
+  const sel = (id, rot, lista, atual, ajuda, teste) => `
     <label class="campo"><span>${rot}</span>
       <select id="${id}">
         <option value="">Padrão do Windows${(() => { const p = lista.find((d) => d.padrao); return p ? ` (agora: ${esc(p.nome)})` : ""; })()}</option>
         ${lista.map((d) => `<option value="${esc(d.nome)}" ${atual === d.nome ? "selected" : ""}>${esc(d.nome)}</option>`).join("")}
         ${atual && !lista.some((d) => d.nome === atual) ? `<option value="${esc(atual)}" selected>${esc(atual)} (desconectado)</option>` : ""}
-      </select><small>${ajuda}</small>
+      </select>
+      ${teste}
+      <small>${ajuda}</small>
     </label>`;
   return `
     <h2>Áudio</h2>
     <p class="lead">Grava duas faixas: o seu microfone e o que sai no seu fone ou caixa de som (a voz dos outros).</p>
     <div class="pilha">
-      ${sel("mic", "Microfone", dev.mics, cfg.mic, "A sua voz.")}
-      ${sel("saida", "Saída de som", dev.saidas, cfg.saida, "Onde você ouve a reunião. “Padrão do Windows” acompanha quando você troca de fone.")}
+      ${sel("mic", "Microfone", dev.mics, cfg.mic, "A sua voz.", `<div class="teste-audio">
+        <span class="barra medidor" id="nivel-mic" role="meter" aria-label="Nível do microfone" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"><i></i></span>
+        <button type="button" class="btn" id="testarMic">${BOTAO_MIC}</button></div>`)}
+      ${sel("saida", "Saída de som", dev.saidas, cfg.saida, "Onde você ouve a reunião. “Padrão do Windows” acompanha quando você troca de fone.", `<div class="teste-audio">
+        <span class="barra medidor" id="nivel-saida" role="meter" aria-label="Nível da saída de som" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"><i></i></span>
+        <button type="button" class="btn" id="somTeste">${BOTAO_SOM}</button></div>`)}
     </div>`;
+}
+
+const mostrado = { mic: 0, saida: 0 };
+function medirAudio() {
+  if (naWeb || !$("#nivel-mic")) return;
+  chamar("medirAudio", { mic: $("#mic").value || null, saida: $("#saida").value || null }).then((r) => {
+    const bm = $("#testarMic"), bs = $("#somTeste");
+    if (bm && !bm.dataset.etapa) bm.disabled = !r.mic || !r.saida;
+    if (bs && !bs.dataset.tocando) bs.disabled = !r.saida;
+  }).catch(() => {});
+}
+if (!naWeb) setInterval(medirAudio, 1000);
+
+// pico 0–1 -> barra em escala de decibéis (-54 dB a 0), que é como o ouvido percebe; cai devagar como os medidores de verdade
+function mostrarNivel(qual, pico) {
+  const el = $(`#nivel-${qual}`);
+  if (!el) return;
+  const alvo = pico ? Math.max(0, Math.min(1, (20 * Math.log10(pico) + 54) / 54)) : 0;
+  mostrado[qual] = Math.max(alvo, mostrado[qual] - 0.04);
+  el.firstElementChild.style.transform = `scaleX(${mostrado[qual].toFixed(3)})`;
+  el.setAttribute("aria-valuenow", Math.round(mostrado[qual] * 100));
+}
+
+function etapaTeste(m) {
+  const b = $("#testarMic");
+  if (!b) return;
+  // durante o teste o botão continua com cara de ativo (mostra o que está acontecendo), só não aceita clique
+  if (m.etapa === "fim") { delete b.dataset.etapa; b.removeAttribute("aria-disabled"); b.classList.remove("gravando"); b.innerHTML = BOTAO_MIC; return; }
+  b.dataset.etapa = m.etapa; b.setAttribute("aria-disabled", "true");
+  b.classList.toggle("gravando", m.etapa === "gravando");
+  b.innerHTML = m.etapa === "gravando"
+    ? `<i class="ph ph-record" aria-hidden="true"></i><span>Gravando ${m.resta}</span>`
+    : `<i class="ph ph-speaker-high" aria-hidden="true"></i><span>Ouvindo</span>`;
 }
 function lAudio() { cfg.mic = $("#mic").value || null; cfg.saida = $("#saida").value || null; }
 
@@ -158,9 +202,9 @@ function rExtras() {
   const sem = cfg.gravarSozinhoSem || [];
   return `
     <h2>Gravação</h2>
-    <p class="lead">Você pode gravar pelo botão no app, pelo atalho de teclado ou deixar que ele perceba a reunião sozinho.</p>
+    <p class="lead">Você pode gravar pelo botão no app, pelo atalho de teclado ou deixar que ele perceba a reunião e grave automaticamente.</p>
     <div class="pilha">
-      ${interruptor("gravarSozinho", cfg.gravarSozinho, "Gravar sozinho quando uma reunião começar", "Começa quando um app de chamada (Teams, Meet, Discord, Zoom...) usa o microfone e para quando ele solta. Toca um bipe ao começar e ao parar.")}
+      ${interruptor("gravarSozinho", cfg.gravarSozinho, "Gravar automaticamente quando uma reunião começar", "Começa quando um app de chamada (Teams, Meet, Discord, Zoom...) usa o microfone e para quando ele solta. Toca um bipe ao começar e ao parar.")}
       <div class="revela" id="appsAuto" ${cfg.gravarSozinho ? "" : "hidden"}>
         <div class="grade-sw" role="group" aria-label="Apps da gravação automática">${APPS_AUTO.map(([id, nome]) => interruptor(`auto-${id}`, !sem.includes(id), nome)).join("")}</div>
       </div>
@@ -170,7 +214,7 @@ function rExtras() {
         ${atalhoOcupado && cfg.atalho ? `<div class="status-linha ruim"><i class="ph ph-warning"></i> Este atalho já é usado por outro programa. Escolha outro.</div>` : ""}
       </label>
       ${interruptor("iniciarComWindows", cfg.iniciarComWindows, "Iniciar com o Windows", "Necessário para o atalho e a gravação automática funcionarem sem abrir o app.")}
-      ${SETUP ? interruptor("atualizarSozinho", cfg.atualizarSozinho, "Atualizar sozinho", "Baixa versões novas em segundo plano e avisa quando é só reiniciar.") : ""}
+      ${SETUP ? interruptor("atualizarSozinho", cfg.atualizarSozinho, "Atualizar automaticamente", "Baixa versões novas em segundo plano e avisa quando é só reiniciar.") : ""}
     </div>`;
 }
 function lExtras() {
@@ -259,7 +303,7 @@ function rPronto() {
   return `
     <i class="ph ph-check-circle grande-ok" aria-hidden="true"></i>
     <h1>Tudo pronto</h1>
-    <p class="lead">${cfg.gravarSozinho ? "Na próxima reunião ele começa a gravar sozinho (você ouve um bipe). " : ""}${cfg.atalho ? `Para gravar na hora, use ${at} ou o botão Gravar no app.` : "Para gravar, use o botão Gravar no app."} Depois é só clicar em Transcrever.</p>`;
+    <p class="lead">${cfg.gravarSozinho ? "Na próxima reunião ele começa a gravar automaticamente (você ouve um bipe). " : ""}${cfg.atalho ? `Para gravar na hora, use ${at} ou o botão Gravar no app.` : "Para gravar, use o botão Gravar no app."} Depois é só clicar em Transcrever.</p>`;
 }
 
 function rMotor() {
@@ -285,7 +329,7 @@ function rAtualizacoes() {
     <p class="lead">Versão instalada: <b>${esc(sis.versao)}</b></p>
     <div class="pilha">
       <div id="atualizacao">${atualizacaoHtml(ultimoStatus)}</div>
-      ${interruptor("atualizarSozinho", cfg.atualizarSozinho, "Atualizar sozinho", "Procura ao abrir o app, baixa em segundo plano e avisa quando é só reiniciar.")}
+      ${interruptor("atualizarSozinho", cfg.atualizarSozinho, "Atualizar automaticamente", "Procura ao abrir o app, baixa em segundo plano e avisa quando é só reiniciar.")}
     </div>`;
 }
 function lAtualizacoes() { cfg.atualizarSozinho = ligado("atualizarSozinho"); }
@@ -364,6 +408,10 @@ aoMudar((m) => {
   } else if (m.evento === "atualizacao") {
     desenharAtualizacao(m.status);
     if (SETUP) desenharRodape();
+  } else if (m.evento === "niveis") {
+    mostrarNivel("mic", m.mic); mostrarNivel("saida", m.saida);
+  } else if (m.evento === "testeAudio") {
+    etapaTeste(m);
   }
 });
 
@@ -506,6 +554,7 @@ conteudo.addEventListener("input", marcarSujo);
 conteudo.addEventListener("change", (e) => {
   marcarSujo();
   if (e.target.id === "pastaMotor" || e.target.id === "pastaGravacoes") espaco(e.target.id);
+  if (e.target.id === "mic" || e.target.id === "saida") medirAudio();
 });
 
 conteudo.addEventListener("click", async (e) => {
@@ -539,6 +588,22 @@ conteudo.addEventListener("click", async (e) => {
   if (t.closest("#checarClaude")) {
     sis = await chamar("sistema"); desenharSecao("resumo");
     if (!temIa()) avisar(sis.claudeDesktop ? "Achei o app Claude, mas não o Claude Code." : "Não achei o Claude Code nem o Codex neste computador.");
+    return;
+  }
+  if (t.closest("#testarMic")) {
+    e.preventDefault();
+    if (t.closest("#testarMic").dataset.etapa) return;
+    try { await chamar("testarMicrofone"); } catch (er) { avisar(er.message); etapaTeste({ etapa: "fim" }); }
+    return;
+  }
+  if (t.closest("#somTeste")) {
+    e.preventDefault();
+    const b = t.closest("#somTeste");
+    if (b.dataset.tocando) return;
+    b.dataset.tocando = "1"; b.setAttribute("aria-disabled", "true");
+    b.innerHTML = `<i class="ph ph-speaker-high" aria-hidden="true"></i><span>Tocando</span>`;
+    try { await chamar("somDeTeste"); } catch (er) { avisar(er.message); }
+    delete b.dataset.tocando; b.removeAttribute("aria-disabled"); b.innerHTML = BOTAO_SOM;
     return;
   }
   if (t.closest("#permitirMic")) {
@@ -635,7 +700,7 @@ $("#voltar").addEventListener("click", () => {
   else location.href = "index.html";
 });
 
-// A lista chama ao abrir de novo: relê o que pode ter mudado fora daqui (ex.: "Gravar sozinho" no topo).
+// A lista chama ao abrir de novo: relê o que pode ter mudado fora daqui (ex.: "Gravar automaticamente" no topo).
 async function abrirSecao(id) {
   if (!sujo) {
     [cfg, pendentes] = await Promise.all([chamar("config"), chamar("pendentes")]);
@@ -814,7 +879,7 @@ function rProntoWeb() {
   return `
     <i class="ph ph-check-circle grande-ok" aria-hidden="true"></i>
     <h1>Tudo pronto</h1>
-    <p class="lead">Para gravar, clique em Gravar e escolha a aba da reunião. Também dá para arrastar um arquivo de áudio para a lista. A transcrição começa sozinha quando a gravação termina.</p>`;
+    <p class="lead">Para gravar, clique em Gravar e escolha a aba da reunião. Também dá para arrastar um arquivo de áudio para a lista. A transcrição começa automaticamente quando a gravação termina.</p>`;
 }
 
 function rMotorWeb() {
@@ -857,7 +922,7 @@ function rSobreWeb() {
       <div class="info"><span>Versão</span><b>${esc(sis.versao)}</b></div>
       <div class="info"><span>Feito por</span><b>Vinícius Vieira · <button class="link-ext" data-link="${GITHUB}">github.com/viniiivs</button></b></div>
       <div class="info"><span>Código aberto</span><b><button class="link-ext" data-link="${REPO}">github.com/viniiivs/reunioes</button> · licença MIT</b></div>
-      <div class="info"><span>App para Windows</span><b><button class="link-ext" data-link="${REPO}/releases/latest">Baixar</button> · grava sozinho e separa as vozes</b></div>
+      <div class="info"><span>App para Windows</span><b><button class="link-ext" data-link="${REPO}/releases/latest">Baixar</button> · grava automaticamente e separa as vozes</b></div>
     </div>
     <h3>Privacidade</h3>
     <p class="nota">Gravação e transcrição acontecem no seu navegador. Nada vai para servidor: só o download do modelo e, se você ligar o resumo, o texto da transcrição enviado à API da Anthropic com a sua chave.</p>
