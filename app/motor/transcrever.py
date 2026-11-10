@@ -36,6 +36,8 @@ import torch  # noqa: E402  (importar antes do whisperx expoe cublas/cudnn do to
 import whisperx  # noqa: E402
 from huggingface_hub.errors import LocalEntryNotFoundError  # noqa: E402
 
+comum.links_sem_corrida()   # o modelo ainda pode ser baixado aqui (carregar)
+
 
 def hms(s):
     s = int(s)

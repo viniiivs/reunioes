@@ -45,6 +45,7 @@ Resumo vivo do projeto: decisões, o que está pronto, o que falta e onde fica c
 - 1.0.20 addons (abas extras por pasta local, tipos claude/comando, trecho, selos); Fato ou fake vira addon externo, 10/11/2026
 
 ## Pendente / conhecido
+- Correção pronta, NÃO publicada (10/11/2026): instalação de um amigo quebrou em "Baixando os modelos" com WinError 1314 (link simbólico). Causa: corrida no huggingface_hub 0.36 (marca link como suportado antes de testar, com downloads paralelos); `comum.links_sem_corrida()` testa sob trava (reproduzido e testado com os.symlink lento sem privilégio). E "Tentar de novo" marcava a etapa errada: a tela agora relê `pendentes`. Contorno sem atualizar: clicar em Tentar de novo ou ligar o Modo de desenvolvedor do Windows.
 - 1.0.21 publicada (10/11/2026): listas aninhadas no markdown dos addons. Addons pessoais (fora do repo) em D:/Projetos/reunioes-addons: fato-ou-fake (instalado) e tcc (sessão de terapia, Eu = terapeuta; opus) NÃO instalado: o dono instala depois, só na máquina dele.
 - Addons: publicado na 1.0.20 (10/11/2026). Falta o primeiro addon novo de verdade do dono. Ideias se precisar: rodar addon num trecho selecionado, addon na versão web.
 - Gravações curtas mostram "0 falantes".

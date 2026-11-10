@@ -38,6 +38,8 @@ def baixar_com_progresso(repo, total_estimado=None, token=None, padroes=None):
 
     from huggingface_hub import HfApi, snapshot_download
 
+    comum.links_sem_corrida()
+
     # list_repo_tree traz o tamanho real de cada arquivo (inclusive os grandes, guardados no LFS);
     # model_info as vezes devolve tamanho vazio para eles e a barra "terminava" com 0 de 0 GB.
     total = 0

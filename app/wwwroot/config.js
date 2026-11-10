@@ -337,6 +337,10 @@ aoMudar((m) => {
 
 async function instalar() {
   instalando = true; estadoInst = {};
+  if (!naWeb) {   // "Tentar de novo" só refaz o que faltou: a lista e o número de cada etapa mudam
+    const p = await chamar("pendentes").catch(() => null);
+    if (p?.length) pendentes = p;
+  }
   redesenharInstalacao(); desenharRodape(); desenharLateral();   // trava os passos ja: voltar no meio regravaria a configuracao
   try { await chamar("instalar"); } catch (e) { instalando = false; estadoInst.erro = e.message; redesenharInstalacao(); desenharRodape(); desenharLateral(); }
 }

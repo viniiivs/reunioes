@@ -7,6 +7,7 @@ import io
 import json
 import os
 import sys
+import threading
 
 DIR_APP = os.path.join(os.environ.get("APPDATA", os.path.expanduser("~")), "Reunioes")
 ARQ_CONFIG = os.environ.get("REUNIOES_CONFIG") or os.path.join(DIR_APP, "config.json")
@@ -100,6 +101,26 @@ def alinhamento_local(idioma):
         return snapshot_download(repo, allow_patterns=PADROES_ALINHAMENTO, local_files_only=True)
     except Exception:  # noqa: BLE001
         return None
+
+
+def links_sem_corrida():
+    """O huggingface_hub 0.36 marca o link simbolico como suportado ANTES de testar; o download baixa
+    varios arquivos em paralelo e outra thread tenta criar o link nesse meio tempo. No Windows sem modo
+    de desenvolvedor isso quebra com WinError 1314. Aqui o teste roda sob trava e so publica o resultado
+    no fim (sem suporte, o hub move os arquivos em vez de criar links)."""
+    from huggingface_hub import file_download as fd
+    if getattr(fd.are_symlinks_supported, "sem_corrida", False):
+        return
+    original, trava, feitos = fd.are_symlinks_supported, threading.Lock(), {}
+
+    def testar(cache_dir=None):
+        with trava:
+            if cache_dir not in feitos:
+                feitos[cache_dir] = original(cache_dir)
+            return feitos[cache_dir]
+
+    testar.sem_corrida = True
+    fd.are_symlinks_supported = testar
 
 
 def utf8_stdout():
