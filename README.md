@@ -59,6 +59,7 @@ O que só o app de Windows faz: gravar automaticamente quando a reunião começa
 
 ## Novidades
 
+- **1.0.27** (10/11/2026): gravar pelo botão e fechar a janela não corta mais a gravação; teste de microfone e fone em Configurações › Áudio (nível ao vivo, gravar 5 s e ouvir de volta, som de teste); fone que cai no meio é reaberto sem parar a gravação.
 - **1.0.26** (10/11/2026): desligar "Gravar automaticamente", ou tirar um app da lista, no meio de uma gravação automática faz ela não parar mais automaticamente: continua até você parar.
 - **1.0.25** (10/11/2026): a gravação automática do Discord não se divide mais em um arquivo por fala: ela espera 3 minutos de silêncio, em vez de 45 segundos, antes de considerar que a chamada acabou.
 - **1.0.24** (10/11/2026): resumo e addons também com o ChatGPT (Codex, conta Plus ou superior), escolha de em quais apps gravar automaticamente (ex.: deixar o Discord de fora) e o app acha o Claude Code instalado pelo npm ou winget sem reiniciar.
