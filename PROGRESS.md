@@ -43,6 +43,7 @@ Resumo vivo do projeto: decisões, o que está pronto, o que falta e onde fica c
 - 1.0.18 transcrição escolhe o modo pela memória livre da placa (GTX 1660: de "travada" para ~7× tempo real), 26/10/2026
 - 1.0.19 vigia de transbordo: se outro programa ocupar a placa no meio, a transcrição troca de modo (ou vai para o processador) em vez de travar, 26/10/2026
 - 1.0.20 addons (abas extras por pasta local, tipos claude/comando, trecho, selos); Fato ou fake vira addon externo, 10/11/2026
+- 1.0.29 (18/11/2026): resumo falhava com "The input does not contain any JSON tokens". Causa: Claude era chamado pelo `claude.cmd` do npm, que passa o `--json-schema` pelo cmd.exe e estraga as aspas; stdout vazio ia para o parser. Correção: `Sistema.Claude()` usa o `claude.exe` do pacote npm (como o Codex), e `Ia.RodarClaude` mostra o stderr quando não há resposta.
 
 ## Pendente / conhecido
 - Web publicada na 1.0.27 (10/11/2026), testada com gravação falsa no IndexedDB (scratchpad web_teste.py; PC e celular, claro e escuro).

@@ -63,6 +63,9 @@ public static class Ia
         }
         if (ferramentas.Length > 0) { psi.ArgumentList.Add("--allowedTools"); psi.ArgumentList.Add(ferramentas); }
         var (saida, erro) = await Executar(psi, entrada, limite, "o Claude");
+        // sem stdout o erro real esta no stderr; antes o parser do JSON estourava com mensagem tecnica
+        if (string.IsNullOrWhiteSpace(saida))
+            throw new InvalidOperationException(erro.Trim().Length > 0 ? erro.Trim() : "O Claude não devolveu resposta.");
 
         var res = JsonNode.Parse(saida);
         var usado = res?["modelUsage"] is JsonObject mu && mu.Count > 0 ? mu.First().Key : modelo;

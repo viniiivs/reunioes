@@ -49,22 +49,35 @@ public static class Sistema
     static string Pasta(Environment.SpecialFolder f, params string[] resto) =>
         Path.Combine(new[] { Environment.GetFolderPath(f) }.Concat(resto).ToArray());
 
+    /// <summary>Claude Code. Pelo npm, usa o claude.exe de dentro do pacote: o claude.cmd passaria os
+    /// argumentos pelo cmd.exe, que estraga o --json-schema (aspas) e o resumo falhava sem resposta.</summary>
     public static string? Claude()
     {
+        var npm = Pasta(Environment.SpecialFolder.ApplicationData, "npm");
         var fixos = new[]
         {
             Pasta(Environment.SpecialFolder.UserProfile, ".local", "bin", "claude.exe"),               // instalador oficial
-            Pasta(Environment.SpecialFolder.ApplicationData, "npm", "claude.cmd"),                     // npm
+            ExeDoClaude(npm),                                                                         // npm
             Pasta(Environment.SpecialFolder.LocalApplicationData, "Microsoft", "WinGet", "Links", "claude.exe"),
         };
-        foreach (var f in fixos) if (File.Exists(f)) return f;
+        foreach (var f in fixos) if (f != null && File.Exists(f)) return f;
         foreach (var d in PathAtual().Split(';', StringSplitOptions.RemoveEmptyEntries))
-            foreach (var n in new[] { "claude.exe", "claude.cmd" })
+            try
             {
-                try { var p = Path.Combine(d.Trim(), n); if (File.Exists(p)) return p; }
-                catch (ArgumentException) { }
+                var pasta = d.Trim();
+                var exe = Path.Combine(pasta, "claude.exe");
+                if (File.Exists(exe)) return exe;
+                var cmd = Path.Combine(pasta, "claude.cmd");
+                if (File.Exists(cmd)) return ExeDoClaude(pasta) ?? cmd;
             }
+            catch (ArgumentException) { }
         return null;
+    }
+
+    static string? ExeDoClaude(string pastaNpm)
+    {
+        var exe = Path.Combine(pastaNpm, "node_modules", "@anthropic-ai", "claude-code", "bin", "claude.exe");
+        return File.Exists(exe) ? exe : null;
     }
 
     /// <summary>Codex (conta do ChatGPT). Pelo npm, usa o codex.exe de dentro do pacote: o codex.cmd passaria
